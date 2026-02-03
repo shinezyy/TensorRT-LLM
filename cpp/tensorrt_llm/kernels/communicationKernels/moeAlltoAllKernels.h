@@ -30,6 +30,33 @@ static constexpr int kMaxTopK = 22;    // Maximum top-k experts per token
 static constexpr int kMaxPayloads = 4; // Maximum number of different payload types
 static constexpr int kMaxRanks = 64;   // Maximum supported EP size
 
+// Timing statistics for performance analysis (in GPU cycles)
+// Set ENABLE_A2A_TIMING_STATS=1 to enable timing collection
+struct MoeA2ATimingStats
+{
+    // Dispatch kernel phases
+    uint64_t dispatch_routing_cycles;  // Phase 1: routing computation
+    uint64_t dispatch_data_cycles;     // Phase 2: data dispatch (remote write)
+    uint64_t dispatch_sync_cycles;     // Phase 3: synchronization
+
+    // Combine kernel phases
+    uint64_t combine_sync_cycles;      // Phase 1: synchronization
+    uint64_t combine_data_cycles;      // Phase 2: data combine (remote read + reduce)
+
+    // Cluster-specific breakdown (only for cluster-based combine kernel)
+    uint64_t combine_cluster_remote_read_cycles;  // Time for remote NVLink reads
+    uint64_t combine_cluster_sync1_cycles;        // Time for first cluster.sync() per iteration
+    uint64_t combine_cluster_dsmem_cycles;        // Time for DSMEM gather and reduce
+    uint64_t combine_cluster_sync2_cycles;        // Time for second cluster.sync() per iteration
+    int combine_cluster_iterations;               // Number of loop iterations
+
+    int rank_id;                       // Which rank this stats is from
+    int local_num_tokens;              // Number of tokens processed
+};
+
+// Print timing stats (call after kernel completes and cudaDeviceSynchronize)
+void moe_a2a_print_timing_stats(MoeA2ATimingStats const* host_stats, int ep_size, float gpu_freq_ghz = 2.0f);
+
 // Describes a single payload type to be communicated
 struct PayloadDescriptor
 {
@@ -65,6 +92,9 @@ struct DispatchKernelPointers
     // Optional: Statistics for EPLB
     int const* eplb_local_stats;         // [eplb_stats_num_experts]
     int* eplb_gathered_stats[kMaxRanks]; // [ep_size, eplb_stats_num_experts] per rank
+
+    // Optional: Timing stats
+    MoeA2ATimingStats* timing_stats;
 };
 
 // Combine kernel pointers - non-const output in src_data_ptrs[0], const recv buffers
@@ -82,6 +112,9 @@ struct CombineKernelPointers
     // Top-K compact routing info per local token (size: [local_num_tokens, top_k])
     int const* topk_target_ranks; // target rank per k, -1 for duplicates
     int const* topk_send_indices; // dst index per k, -1 for duplicates
+
+    // Optional: Timing stats
+    MoeA2ATimingStats* timing_stats;
 };
 
 // Dispatch phase parameters
@@ -130,6 +163,9 @@ struct MoeA2ADispatchParams
 
     // CUDA stream
     cudaStream_t stream;
+
+    // Optional: Timing stats (set to non-null to enable timing collection)
+    MoeA2ATimingStats* timing_stats; // Device pointer, one per rank
 };
 
 // Dispatch kernels
@@ -175,6 +211,15 @@ struct MoeA2ACombineParams
 
     // CUDA stream
     cudaStream_t stream;
+
+    // Optional: Timing stats (set to non-null to enable timing collection)
+    MoeA2ATimingStats* timing_stats; // Device pointer, one per rank
+
+    // Cluster configuration for DSMEM-based parallel combine (SM90+)
+    // When cluster_size > 1, multiple CTAs in a cluster cooperatively fetch from different remote ranks
+    // to reduce latency from sequential remote reads.
+    // cluster_size: 1 = disabled (default), 2/4/8 = number of CTAs per cluster
+    int cluster_size = 1;
 };
 
 // Combine kernels

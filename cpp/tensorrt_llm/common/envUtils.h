@@ -157,6 +157,27 @@ int getEnvMoeA2ADispatchBlockSize();
 // Block size (threads per block) for MoE A2A Combine kernels (default 256 if unset or invalid)
 int getEnvMoeA2ACombineBlockSize();
 
+// Whether to enable timing stats for MoE A2A kernels (default false).
+// Set TRTLLM_MOE_A2A_TIMING_STATS=1 to enable.
+bool getEnvMoeA2ATimingStats();
+
+// GPU frequency in GHz for timing stats conversion (default 2.0).
+// Set TRTLLM_MOE_A2A_GPU_FREQ_GHZ to override.
+float getEnvMoeA2AGpuFreqGhz();
+
+// Cluster size for MoE A2A Combine kernel (SM90+ DSMEM optimization).
+// Set TLLM_MOE_A2A_CLUSTER_SIZE to 2, 4, or 8 to enable cluster-based parallel combine.
+// Default is 1 (disabled). Requires Hopper (SM90+) GPU.
+int getEnvMoeA2AClusterSize();
+
+// Optimization mode for cluster-based combine kernel.
+// Set TLLM_MOE_A2A_CLUSTER_OPT_MODE to select optimization strategy:
+//   0 = Original (load + accumulate in same loop, has dependency chain)
+//   1 = Break dependency chain (load all first into registers, then accumulate)
+//   2 = Use cp.async (hardware async copy to shared memory)
+// Default is 0 (original). Only effective when cluster_size > 1.
+int getEnvMoeA2AClusterOptMode();
+
 bool getEnvKVCacheTransferAllBlocksForWindow();
 
 bool getEnvEplbForceGdrcopy();

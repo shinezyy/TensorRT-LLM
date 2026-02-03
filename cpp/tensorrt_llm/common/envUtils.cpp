@@ -560,6 +560,60 @@ int getEnvMoeA2ACombineBlockSize()
     return kBlock;
 }
 
+bool getEnvMoeA2ATimingStats()
+{
+    return getBoolEnv("TRTLLM_MOE_A2A_TIMING_STATS");
+}
+
+float getEnvMoeA2AGpuFreqGhz()
+{
+    auto env = getFloatEnv("TRTLLM_MOE_A2A_GPU_FREQ_GHZ");
+    return env.value_or(2.0f);
+}
+
+int getEnvMoeA2AClusterSize()
+{
+    static int const clusterSize = []()
+    {
+        auto env = getIntEnv("TLLM_MOE_A2A_CLUSTER_SIZE");
+        if (!env.has_value())
+        {
+            return 1; // Default: disabled
+        }
+        int size = env.value();
+        // Validate: must be 1, 2, 4, or 8
+        if (size != 1 && size != 2 && size != 4 && size != 8)
+        {
+            TLLM_LOG_WARNING("Invalid TLLM_MOE_A2A_CLUSTER_SIZE=%d, must be 1, 2, 4, or 8. Using default 1.", size);
+            return 1;
+        }
+        return size;
+    }();
+    return clusterSize;
+}
+
+int getEnvMoeA2AClusterOptMode()
+{
+    static int const optMode = []()
+    {
+        auto env = getIntEnv("TLLM_MOE_A2A_CLUSTER_OPT_MODE");
+        if (!env.has_value())
+        {
+            return 0; // Default: original
+        }
+        int mode = env.value();
+        // Validate: must be 0, 1, or 2
+        if (mode < 0 || mode > 2)
+        {
+            TLLM_LOG_WARNING(
+                "Invalid TLLM_MOE_A2A_CLUSTER_OPT_MODE=%d, must be 0, 1, or 2. Using default 0.", mode);
+            return 0;
+        }
+        return mode;
+    }();
+    return optMode;
+}
+
 bool getEnvEplbForceGdrcopy()
 {
     return getBoolEnv("TRTLLM_EPLB_FORCE_GDRCOPY");
