@@ -33,6 +33,7 @@ from tensorrt_llm._torch.modules.mlp import MLP
 from tensorrt_llm._torch.visual_gen.attention_backend.utils import create_attention
 from tensorrt_llm._torch.visual_gen.modules.attention import Attention, QKVMode
 from tensorrt_llm._torch.visual_gen.quantization.loader import DynamicLinearWeightLoader
+from tensorrt_llm._utils import nvtx_range
 from tensorrt_llm.logger import logger
 from tensorrt_llm.models.modeling_utils import QuantConfig
 from tensorrt_llm.quantization.mode import QuantAlgo
@@ -513,19 +514,21 @@ class BasicAVTransformerBlock(nn.Module):
                 self.scale_shift_table, vx.shape[0], video.timesteps, slice(0, 3)
             )
             if not skip_v_self:
-                norm_vx = rms_norm(vx, eps=self.norm_eps) * (1 + vscale_msa) + vshift_msa
-                v_self_out = self.attn1(norm_vx, pe=video.positional_embeddings) * vgate_msa
-                if has_perturbations and perturbations.any_in_batch(
-                    PerturbationType.SKIP_VIDEO_SELF_ATTN, self.idx
-                ):
-                    v_self_out = v_self_out * perturbations.mask_like(
-                        PerturbationType.SKIP_VIDEO_SELF_ATTN, self.idx, v_self_out
-                    )
-                vx = vx + v_self_out
-            vx = vx + self.attn2(
-                rms_norm(vx, eps=self.norm_eps),
-                context=video.context,
-            )
+                with nvtx_range("ltx2.video_self_attn"):
+                    norm_vx = rms_norm(vx, eps=self.norm_eps) * (1 + vscale_msa) + vshift_msa
+                    v_self_out = self.attn1(norm_vx, pe=video.positional_embeddings) * vgate_msa
+                    if has_perturbations and perturbations.any_in_batch(
+                        PerturbationType.SKIP_VIDEO_SELF_ATTN, self.idx
+                    ):
+                        v_self_out = v_self_out * perturbations.mask_like(
+                            PerturbationType.SKIP_VIDEO_SELF_ATTN, self.idx, v_self_out
+                        )
+                    vx = vx + v_self_out
+            with nvtx_range("ltx2.t2v_cross_attn"):
+                vx = vx + self.attn2(
+                    rms_norm(vx, eps=self.norm_eps),
+                    context=video.context,
+                )
             del vshift_msa, vscale_msa, vgate_msa
 
         # --- Audio self-attention + text cross-attention ---
@@ -537,19 +540,21 @@ class BasicAVTransformerBlock(nn.Module):
                 self.audio_scale_shift_table, ax.shape[0], audio.timesteps, slice(0, 3)
             )
             if not skip_a_self:
-                norm_ax = rms_norm(ax, eps=self.norm_eps) * (1 + ascale_msa) + ashift_msa
-                a_self_out = self.audio_attn1(norm_ax, pe=audio.positional_embeddings) * agate_msa
-                if has_perturbations and perturbations.any_in_batch(
-                    PerturbationType.SKIP_AUDIO_SELF_ATTN, self.idx
-                ):
-                    a_self_out = a_self_out * perturbations.mask_like(
-                        PerturbationType.SKIP_AUDIO_SELF_ATTN, self.idx, a_self_out
-                    )
-                ax = ax + a_self_out
-            ax = ax + self.audio_attn2(
-                rms_norm(ax, eps=self.norm_eps),
-                context=audio.context,
-            )
+                with nvtx_range("ltx2.audio_self_attn"):
+                    norm_ax = rms_norm(ax, eps=self.norm_eps) * (1 + ascale_msa) + ashift_msa
+                    a_self_out = self.audio_attn1(norm_ax, pe=audio.positional_embeddings) * agate_msa
+                    if has_perturbations and perturbations.any_in_batch(
+                        PerturbationType.SKIP_AUDIO_SELF_ATTN, self.idx
+                    ):
+                        a_self_out = a_self_out * perturbations.mask_like(
+                            PerturbationType.SKIP_AUDIO_SELF_ATTN, self.idx, a_self_out
+                        )
+                    ax = ax + a_self_out
+            with nvtx_range("ltx2.t2a_cross_attn"):
+                ax = ax + self.audio_attn2(
+                    rms_norm(ax, eps=self.norm_eps),
+                    context=audio.context,
+                )
             del ashift_msa, ascale_msa, agate_msa
 
         # --- Bidirectional audio ↔ video cross-attention ---
@@ -591,82 +596,86 @@ class BasicAVTransformerBlock(nn.Module):
             )
 
             if run_a2v and not skip_a2v:
-                vx_scaled = vx_norm3 * (1 + scale_ca_video_a2v) + shift_ca_video_a2v
-                ax_scaled = ax_norm3 * (1 + scale_ca_audio_a2v) + shift_ca_audio_a2v
+                with nvtx_range("ltx2.a2v_cross_attn"):
+                    vx_scaled = vx_norm3 * (1 + scale_ca_video_a2v) + shift_ca_video_a2v
+                    ax_scaled = ax_norm3 * (1 + scale_ca_audio_a2v) + shift_ca_audio_a2v
 
-                # Project-before-gather: K/V projections run on sharded data
-                # so they benefit from Ulysses scaling.  Only the smaller
-                # projected tensors are all-gathered.
-                k_a2v, v_a2v = self.audio_to_video_attn.project_kv(ax_scaled)
-                if self._audio_is_sharded:
-                    k_a2v = self._sp_all_gather(k_a2v)
-                    v_a2v = self._sp_all_gather(v_a2v)
-                    k_pe_a2v = self._sp_gather_pe(audio.cross_positional_embeddings)
-                else:
-                    k_pe_a2v = audio.cross_positional_embeddings
+                    # Project-before-gather: K/V projections run on sharded data
+                    # so they benefit from Ulysses scaling.  Only the smaller
+                    # projected tensors are all-gathered.
+                    k_a2v, v_a2v = self.audio_to_video_attn.project_kv(ax_scaled)
+                    if self._audio_is_sharded:
+                        k_a2v = self._sp_all_gather(k_a2v)
+                        v_a2v = self._sp_all_gather(v_a2v)
+                        k_pe_a2v = self._sp_gather_pe(audio.cross_positional_embeddings)
+                    else:
+                        k_pe_a2v = audio.cross_positional_embeddings
 
-                a2v_out = (
-                    self.audio_to_video_attn(
-                        vx_scaled,
-                        pre_projected_kv=(k_a2v, v_a2v),
-                        pe=video.cross_positional_embeddings,
-                        k_pe=k_pe_a2v,
+                    a2v_out = (
+                        self.audio_to_video_attn(
+                            vx_scaled,
+                            pre_projected_kv=(k_a2v, v_a2v),
+                            pe=video.cross_positional_embeddings,
+                            k_pe=k_pe_a2v,
+                        )
+                        * gate_out_a2v
                     )
-                    * gate_out_a2v
-                )
-                if has_perturbations and perturbations.any_in_batch(
-                    PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx
-                ):
-                    a2v_out = a2v_out * perturbations.mask_like(
-                        PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx, a2v_out
-                    )
-                vx = vx + a2v_out
+                    if has_perturbations and perturbations.any_in_batch(
+                        PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx
+                    ):
+                        a2v_out = a2v_out * perturbations.mask_like(
+                            PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx, a2v_out
+                        )
+                    vx = vx + a2v_out
 
             if run_v2a and not skip_v2a:
-                ax_scaled = ax_norm3 * (1 + scale_ca_audio_v2a) + shift_ca_audio_v2a
-                vx_scaled = vx_norm3 * (1 + scale_ca_video_v2a) + shift_ca_video_v2a
+                with nvtx_range("ltx2.v2a_cross_attn"):
+                    ax_scaled = ax_norm3 * (1 + scale_ca_audio_v2a) + shift_ca_audio_v2a
+                    vx_scaled = vx_norm3 * (1 + scale_ca_video_v2a) + shift_ca_video_v2a
 
-                # Project-before-gather (video → audio direction).
-                k_v2a, v_v2a = self.video_to_audio_attn.project_kv(vx_scaled)
-                if self._use_ulysses:
-                    k_v2a = self._sp_all_gather(k_v2a)
-                    v_v2a = self._sp_all_gather(v_v2a)
-                    k_pe_v2a = self._sp_gather_pe(video.cross_positional_embeddings)
-                else:
-                    k_pe_v2a = video.cross_positional_embeddings
+                    # Project-before-gather (video → audio direction).
+                    k_v2a, v_v2a = self.video_to_audio_attn.project_kv(vx_scaled)
+                    if self._use_ulysses:
+                        k_v2a = self._sp_all_gather(k_v2a)
+                        v_v2a = self._sp_all_gather(v_v2a)
+                        k_pe_v2a = self._sp_gather_pe(video.cross_positional_embeddings)
+                    else:
+                        k_pe_v2a = video.cross_positional_embeddings
 
-                v2a_out = (
-                    self.video_to_audio_attn(
-                        ax_scaled,
-                        pre_projected_kv=(k_v2a, v_v2a),
-                        pe=audio.cross_positional_embeddings,
-                        k_pe=k_pe_v2a,
+                    v2a_out = (
+                        self.video_to_audio_attn(
+                            ax_scaled,
+                            pre_projected_kv=(k_v2a, v_v2a),
+                            pe=audio.cross_positional_embeddings,
+                            k_pe=k_pe_v2a,
+                        )
+                        * gate_out_v2a
                     )
-                    * gate_out_v2a
-                )
-                if has_perturbations and perturbations.any_in_batch(
-                    PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx
-                ):
-                    v2a_out = v2a_out * perturbations.mask_like(
-                        PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx, v2a_out
-                    )
-                ax = ax + v2a_out
+                    if has_perturbations and perturbations.any_in_batch(
+                        PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx
+                    ):
+                        v2a_out = v2a_out * perturbations.mask_like(
+                            PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx, v2a_out
+                        )
+                    ax = ax + v2a_out
 
         # --- Video FFN ---
         if run_vx:
-            vshift_mlp, vscale_mlp, vgate_mlp = self._get_ada_values(
-                self.scale_shift_table, vx.shape[0], video.timesteps, slice(3, None)
-            )
-            vx_scaled = rms_norm(vx, eps=self.norm_eps) * (1 + vscale_mlp) + vshift_mlp
-            vx = vx + self.ff(vx_scaled) * vgate_mlp
+            with nvtx_range("ltx2.video_ffn"):
+                vshift_mlp, vscale_mlp, vgate_mlp = self._get_ada_values(
+                    self.scale_shift_table, vx.shape[0], video.timesteps, slice(3, None)
+                )
+                vx_scaled = rms_norm(vx, eps=self.norm_eps) * (1 + vscale_mlp) + vshift_mlp
+                vx = vx + self.ff(vx_scaled) * vgate_mlp
 
         # --- Audio FFN ---
         if run_ax:
-            ashift_mlp, ascale_mlp, agate_mlp = self._get_ada_values(
-                self.audio_scale_shift_table, ax.shape[0], audio.timesteps, slice(3, None)
-            )
-            ax_scaled = rms_norm(ax, eps=self.norm_eps) * (1 + ascale_mlp) + ashift_mlp
-            ax = ax + self.audio_ff(ax_scaled) * agate_mlp
+            with nvtx_range("ltx2.audio_ffn"):
+                ashift_mlp, ascale_mlp, agate_mlp = self._get_ada_values(
+                    self.audio_scale_shift_table, ax.shape[0], audio.timesteps, slice(3, None)
+                )
+                ax_scaled = rms_norm(ax, eps=self.norm_eps) * (1 + ascale_mlp) + ashift_mlp
+                ax = ax + self.audio_ff(ax_scaled) * agate_mlp
 
         return (
             replace(video, x=vx) if video is not None else None,
