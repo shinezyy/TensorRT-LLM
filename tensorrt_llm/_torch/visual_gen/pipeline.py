@@ -479,10 +479,12 @@ class BasePipeline(nn.Module):
         )
         warmup_start = time.time()
 
+        self._is_warmup = True
         for height, width, num_frames in shapes:
             logger.info(f"Warmup: {height}x{width}, {num_frames} frames, {steps} steps")
             self._run_warmup(height, width, num_frames, steps)
             torch.cuda.synchronize()
+        self._is_warmup = False
 
         self._warmed_up_shapes = set(
             self.warmup_cache_key(h, w, num_frames=f) for h, w, f in shapes
@@ -863,9 +865,21 @@ class BasePipeline(nn.Module):
                 extra_stream_latents[name] = stream_latents
                 extra_stream_schedulers[name] = stream_scheduler
 
+        # Profiler gating: only activate nsys capture for a configurable window
+        # of denoise steps. Disabled during warmup.
+        if getattr(self, "_is_warmup", False):
+            _profile_start = -1
+        else:
+            _profile_start = int(os.environ.get("PROFILE_START_STEP", "-1"))
+        _profile_num = int(os.environ.get("PROFILE_NUM_STEPS", "0"))
+        _profile_end = (_profile_start + _profile_num) if _profile_start >= 0 else -1
+
         start_time = time.time()
 
         for i, t in enumerate(timesteps):
+            if i == _profile_start:
+                torch.cuda.cudart().cudaProfilerStart()
+
             step_start = time.time()
 
             # Two-stage denoising: switch guidance scale at boundary
@@ -912,6 +926,9 @@ class BasePipeline(nn.Module):
                 scheduler,
                 extra_stream_schedulers,
             )
+
+            if i + 1 == _profile_end:
+                torch.cuda.cudart().cudaProfilerStop()
 
             # Logging
             if self.rank == 0:
