@@ -71,6 +71,7 @@ class VanillaAttention(AttentionBackend):
         v: torch.Tensor,
         *,
         attention_mask: PredefinedAttentionMask = PredefinedAttentionMask.FULL,
+        key_padding_mask: Optional[torch.Tensor] = None,
         **kwargs,
     ) -> torch.Tensor:
         """
@@ -83,6 +84,13 @@ class VanillaAttention(AttentionBackend):
             k: Key tensor [batch_size, num_kv_heads, seq_len_kv, head_dim]
             v: Value tensor [batch_size, num_kv_heads, seq_len_kv, head_dim]
             attention_mask: Attention mask type (CAUSAL or FULL)
+            key_padding_mask: Optional bool tensor ``[batch_size, seq_len_kv]``
+                where ``True`` means the K/V position is valid and ``False``
+                means padded. Expanded internally to ``[B, 1, 1, S_kv]`` to
+                broadcast across heads and query positions. When combined with
+                ``attention_mask=CAUSAL`` the causal mask is built explicitly
+                and AND-ed with the pad mask (SDPA rejects ``attn_mask`` +
+                ``is_causal=True``).
 
         Returns:
             Output tensor [batch_size, num_heads, seq_len, head_dim]
@@ -99,7 +107,30 @@ class VanillaAttention(AttentionBackend):
             f"Invalid v shape: expected [B={q.shape[0]}, H_kv, S_kv, D={self.head_dim}], got {v.shape}"
         )
 
-        return F.scaled_dot_product_attention(q, k, v, is_causal=is_causal, scale=self.scale)
+        attn_mask: Optional[torch.Tensor] = None
+        if key_padding_mask is not None:
+            B, S_kv = q.shape[0], k.shape[2]
+            assert key_padding_mask.dtype == torch.bool, (
+                f"key_padding_mask must be bool, got {key_padding_mask.dtype}"
+            )
+            assert key_padding_mask.shape == (B, S_kv), (
+                f"key_padding_mask must have shape [B={B}, S_kv={S_kv}], "
+                f"got {tuple(key_padding_mask.shape)}"
+            )
+            # Expand [B, S_kv] -> [B, 1, 1, S_kv] so it broadcasts over heads and Q positions.
+            attn_mask = key_padding_mask.view(B, 1, 1, S_kv)
+            if is_causal:
+                # SDPA rejects attn_mask + is_causal=True; build the causal mask explicitly.
+                S_q = q.shape[2]
+                causal = torch.ones(
+                    S_q, S_kv, dtype=torch.bool, device=q.device
+                ).tril()
+                attn_mask = attn_mask & causal
+                is_causal = False
+
+        return F.scaled_dot_product_attention(
+            q, k, v, attn_mask=attn_mask, is_causal=is_causal, scale=self.scale
+        )
 
     @property
     def preferred_layout(self) -> AttentionTensorLayout:
