@@ -991,27 +991,55 @@ class TestAC6TwoStageZeroCollective:
 
 
 def _logic_ac6_timeout_negative_divergent_toggle(rank, world_size):
-    """Rank 0 issues the Ulysses a2a; rank 1 "loses" the toggle and skips it.
+    """Real-path AC-6 negative: divergent ``set_ulysses_enabled`` across ranks.
 
-    Without a timeout mechanism the enabled rank would hang forever on
-    ``all_to_all_single``. The test's driver (see
-    :class:`TestAC6TimeoutNegativeDivergentToggle`) enforces a wall-clock
-    watchdog around the whole spawn group, so the hang is bounded rather
-    than silent. This worker is what produces the hang.
+    Rank 0 keeps ``set_ulysses_enabled(True)`` so its cross-attn path issues
+    the Ulysses ``all_to_all_single``. Rank 1 "loses" the toggle via
+    ``set_ulysses_enabled(False)`` so its cross-attn path bypasses the
+    collective entirely. The production ``LTXModel.forward`` on rank 0 then
+    blocks on the unmatched a2a and hangs. The test's driver watchdog (see
+    :class:`TestAC6TimeoutNegativeDivergentToggle`) bounds that hang; the
+    watchdog firing IS the pass condition, because it proves the regression
+    path is detectable in finite wall-clock.
+
+    This is deliberately the same model/modality fixture as the positive
+    AC-6 test (:func:`_logic_ac6_two_stage_zero_collective`) so the
+    production branch that hangs is the real ``audio_attn1`` / a2v / v2a
+    cross-attn path, not a synthetic micro-collective.
     """
     assert world_size == 2, "AC-6 negative is two-rank by construction"
+    dtype = torch.bfloat16
     device = torch.device(f"cuda:{torch.cuda.current_device()}")
+    batch = 1
+    a_frames = 4
+    text_len = 4
+    v_frames, v_h, v_w = 2, 4, 4
 
+    cfg = _make_model_config_with_pg(
+        ulysses_size=world_size, group=dist.group.WORLD, rank=rank
+    )
+    torch.manual_seed(808)
+    model = _build_ltx2_model(cfg, dtype=dtype, device=device).eval()
+    _init_weights_deterministic(model, seed=1111)
+    model.configure_audio_ulysses(a_frames)
+
+    torch.manual_seed(909)
+    video_mod, audio_mod = _build_av_modalities(
+        batch, v_frames, v_h, v_w, a_frames, text_len, device=device, dtype=dtype
+    )
+
+    # Divergent toggle: rank 0 keeps Ulysses ON (will issue the cross-attn
+    # a2a), rank 1 flips Ulysses OFF (skips the cross-attn a2a). This is
+    # exactly the plan's "forgetting the cross-attn toggle" regression.
     if rank == 0:
-        inp = torch.ones(world_size * 4, device=device, dtype=torch.bfloat16)
-        out = torch.empty_like(inp)
-        dist.all_to_all_single(out, inp)
-        torch.cuda.synchronize(device=device)
+        model.set_ulysses_enabled(True)
+        model.configure_audio_ulysses(a_frames)
     else:
-        # "Ulysses disabled on this rank" -> skip the a2a entirely.
-        # Sleep comfortably longer than the driver's watchdog.
-        import time as _time
-        _time.sleep(180.0)
+        model.set_ulysses_enabled(False)
+
+    with torch.no_grad():
+        model(video=video_mod, audio=audio_mod)
+    torch.cuda.synchronize(device=device)
 
 
 def _run_ac6_negative_with_watchdog(timeout_seconds: float = 30.0) -> None:

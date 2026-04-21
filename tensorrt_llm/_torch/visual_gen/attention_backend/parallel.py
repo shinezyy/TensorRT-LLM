@@ -243,17 +243,19 @@ class UlyssesCrossAttention(AttentionBackend):
 
         if self.world_size > 1:
             # Q: scatter heads, gather seq. [B, S_q/U, H, D] -> [B, S_q, H/U, D].
-            q = all_to_all_4d(
-                q, scatter_dim=2, gather_dim=1, process_group=self.process_group
-            )
+            with torch.cuda.nvtx.range("ulysses.cross.a2a.q"):
+                q = all_to_all_4d(
+                    q, scatter_dim=2, gather_dim=1, process_group=self.process_group
+                )
             # Fused K|V 5D a2a. Stack on a new dim of size 2 so both tensors
             # travel in one collective. Layout:
             #   [B, S_kv/U, 2, H_kv, D] -> [B, S_kv, 2, H_kv/U, D]
             kv = torch.stack([k, v], dim=2)
             self._assert_fused_kv_stack_shape(kv)
-            kv = all_to_all_5d(
-                kv, scatter_dim=3, gather_dim=1, process_group=self.process_group
-            )
+            with torch.cuda.nvtx.range("ulysses.cross.a2a.kv"):
+                kv = all_to_all_5d(
+                    kv, scatter_dim=3, gather_dim=1, process_group=self.process_group
+                )
             k, v = kv.unbind(dim=2)
             k = k.contiguous()
             v = v.contiguous()
@@ -272,9 +274,10 @@ class UlyssesCrossAttention(AttentionBackend):
 
         if self.world_size > 1:
             # Output a2a on Q's seq axis: [B, S_q, H/U, D] -> [B, S_q/U, H, D].
-            out = all_to_all_4d(
-                out, scatter_dim=1, gather_dim=2, process_group=self.process_group
-            )
+            with torch.cuda.nvtx.range("ulysses.cross.a2a.out"):
+                out = all_to_all_4d(
+                    out, scatter_dim=1, gather_dim=2, process_group=self.process_group
+                )
 
         return out
 

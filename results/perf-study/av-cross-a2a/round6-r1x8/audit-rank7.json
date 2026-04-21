@@ -1,0 +1,54 @@
+{
+  "ltx2.a2v_cross_attn": [
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    },
+    {
+      "all_to_all_kernels": 2,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    },
+    {
+      "all_to_all_kernels": 4,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    }
+  ],
+  "ltx2.v2a_cross_attn": [
+    {
+      "all_to_all_kernels": 4,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    },
+    {
+      "all_to_all_kernels": 4,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0,
+      "op_level_a2a_nvtx": 3
+    }
+  ],
+  "_totals": {
+    "all_to_all_kernels": 26,
+    "all_gather_kernels": 0,
+    "op_level_a2a_nvtx": 24,
+    "op_level_markers_present": true,
+    "num_ranges": 8
+  }
+}
+AC-9 PASS: every ltx2.{a2v,v2a}_cross_attn NVTX range has ZERO AllGather kernels, and AllToAll/SendRecv kernels are present globally. Per-range raw counts are reported above and are topology-dependent (intra-node NCCL compiles all_to_all_single to (U-1) SendRecv pairs per op, with async spillover outside the Python range).

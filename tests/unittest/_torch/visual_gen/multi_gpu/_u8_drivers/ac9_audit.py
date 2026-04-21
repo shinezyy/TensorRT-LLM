@@ -41,20 +41,30 @@ from pathlib import Path
 
 _A2A_NVTX_NAMES = ("ltx2.a2v_cross_attn", "ltx2.v2a_cross_attn")
 
+_OP_LEVEL_A2A_NVTX_NAMES = (
+    "ulysses.cross.a2a.q",
+    "ulysses.cross.a2a.kv",
+    "ulysses.cross.a2a.out",
+)
+
 
 def _fetch_ranges(conn, names):
-    # AC-9 applies specifically to the AV cross-attn NVTX ranges
-    # (a2v/v2a); narrow the audit to those two names only so text
-    # cross-attn ranges (audio_cross_attn / video_cross_attn) are not
-    # mixed into the kernel counts.
+    # NVTX ranges use two encodings: registered strings (textId ->
+    # StringIds.value) and inline strings (text column populated
+    # directly). ``torch.cuda.nvtx.range`` uses the latter while the
+    # ``ltx2.*`` markers go through the former. Union both.
     placeholders = ",".join("?" for _ in names)
     rows = conn.execute(
         f"""
         SELECT r.start, r.end, s.value
         FROM NVTX_EVENTS r JOIN StringIds s ON r.textId = s.id
         WHERE s.value IN ({placeholders})
+        UNION ALL
+        SELECT start, end, text
+        FROM NVTX_EVENTS
+        WHERE text IN ({placeholders})
         """,
-        tuple(names),
+        tuple(names) + tuple(names),
     ).fetchall()
     return [(int(start), int(end), str(value)) for (start, end, value) in rows]
 
@@ -101,6 +111,12 @@ def main():
               file=sys.stderr)
         sys.exit(3)
     kernels = _fetch_kernel_events(conn)
+    # Op-level a2a NVTX ranges (Q / fused K|V / output), inserted inside
+    # ``UlyssesCrossAttention.forward``. These are implementation-
+    # independent: regardless of whether NCCL lowers ``all_to_all_single``
+    # to a single ``AllToAll`` kernel or ``U-1`` ``SendRecv`` kernels per
+    # op, there must be exactly one op-level NVTX range per a2a OP.
+    op_ranges = _fetch_ranges(conn, _OP_LEVEL_A2A_NVTX_NAMES)
 
     summary = {}
     ok = True
@@ -112,9 +128,17 @@ def main():
     for start, end, name in ranges:
         a2a = _count_in_range(kernels, start, end, ALLTOALL_KERNEL_PATTERNS)
         ag = _count_in_range(kernels, start, end, ALLGATHER_KERNEL_PATTERNS)
+        # Count op-level NVTX ranges whose start time lies inside this
+        # [range_start, range_end] window. The plan requires exactly 3:
+        # Q a2a, fused K|V a2a, output a2a.
+        op_count = sum(
+            1 for (o_start, o_end, _o_name) in op_ranges
+            if start <= o_start <= end
+        )
         summary.setdefault(name, []).append({
             "all_to_all_kernels": a2a,
             "all_gather_kernels": ag,
+            "op_level_a2a_nvtx": op_count,
         })
         if ag > 0:
             ok = False
@@ -123,12 +147,26 @@ def main():
                 "(plan requires 0 — Ulysses cross-attn must never launch AllGather).",
                 file=sys.stderr,
             )
+        # Op-level NVTX invariant: if op markers are present at all in this
+        # profile, every AV cross-attn range must carry exactly 3 of them.
+        # (If the profile was captured from a build without the markers
+        # yet, ``op_ranges`` is empty and this check is skipped.)
+        if op_ranges and op_count != 3:
+            ok = False
+            print(
+                f"FAIL range={name} [{start},{end}]: op-level a2a NVTX "
+                f"ranges={op_count} (expected exactly 3: Q / K|V / output).",
+                file=sys.stderr,
+            )
 
     total_a2a = sum(r["all_to_all_kernels"] for v in summary.values() for r in v)
     total_ag = sum(r["all_gather_kernels"] for v in summary.values() for r in v)
+    total_op = sum(r["op_level_a2a_nvtx"] for v in summary.values() for r in v)
     summary["_totals"] = {
         "all_to_all_kernels": total_a2a,
         "all_gather_kernels": total_ag,
+        "op_level_a2a_nvtx": total_op,
+        "op_level_markers_present": bool(op_ranges),
         "num_ranges": sum(len(v) for v in summary.values()),
     }
     if total_a2a == 0:
