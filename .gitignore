@@ -102,5 +102,10 @@ compile_commands.json
 enroot/sw-tensorrt-docker+*.sqsh
 enroot/tensorrt_llm.devel.sqsh
 
+# Agent/workflow tooling (local-only; agent-generated plans, specs, and run logs)
+.humanize/
+docs/superpowers/
+plans/
+
 # MacOSX Files
 .DS_Store
