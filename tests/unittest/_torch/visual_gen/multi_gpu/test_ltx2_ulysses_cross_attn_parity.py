@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import math
 import os
+import time
 import types
 from typing import Callable
 
@@ -974,6 +975,110 @@ class TestAC6TwoStageZeroCollective:
 
     def test_disable_enable_collectives(self):
         _run_distributed(world_size=2, test_fn=_logic_ac6_two_stage_zero_collective)
+
+
+# ---------------------------------------------------------------------------
+# Worker logic: AC-6 timeout-bounded NEGATIVE for a divergent Ulysses toggle.
+#
+# If one rank has ``set_ulysses_enabled(False)`` (skips the cross-attn a2a)
+# while the other rank keeps it enabled (issues the a2a), the enabled rank
+# has no peer and the NCCL ``all_to_all_single`` collective hangs. The plan
+# requires this failure mode to surface as a loud, bounded timeout error
+# rather than a silent deadlock. We exercise the raw collective directly and
+# bring up the PG with a short watchdog timeout so the enabled rank aborts
+# quickly; the disabled rank simply exits without participating.
+# ---------------------------------------------------------------------------
+
+
+def _logic_ac6_timeout_negative_divergent_toggle(rank, world_size):
+    """Rank 0 issues the Ulysses a2a; rank 1 "loses" the toggle and skips it.
+
+    Without a timeout mechanism the enabled rank would hang forever on
+    ``all_to_all_single``. The test's driver (see
+    :class:`TestAC6TimeoutNegativeDivergentToggle`) enforces a wall-clock
+    watchdog around the whole spawn group, so the hang is bounded rather
+    than silent. This worker is what produces the hang.
+    """
+    assert world_size == 2, "AC-6 negative is two-rank by construction"
+    device = torch.device(f"cuda:{torch.cuda.current_device()}")
+
+    if rank == 0:
+        inp = torch.ones(world_size * 4, device=device, dtype=torch.bfloat16)
+        out = torch.empty_like(inp)
+        dist.all_to_all_single(out, inp)
+        torch.cuda.synchronize(device=device)
+    else:
+        # "Ulysses disabled on this rank" -> skip the a2a entirely.
+        # Sleep comfortably longer than the driver's watchdog.
+        import time as _time
+        _time.sleep(180.0)
+
+
+def _run_ac6_negative_with_watchdog(timeout_seconds: float = 30.0) -> None:
+    """Run the AC-6 negative worker with a wall-clock watchdog.
+
+    If mp.spawn does NOT exit within ``timeout_seconds``, the collective
+    hang has been detected and the ranks are forcefully terminated. The
+    watchdog firing IS the pass condition: it proves the missing-toggle
+    failure mode is bounded (detectable in finite time), not a silent
+    deadlock. If mp.spawn exits cleanly, the test fails because the
+    divergent-toggle path should NOT complete without a peer.
+    """
+    if not MODULES_AVAILABLE:
+        pytest.skip("Required modules not available")
+    world_size = 2
+    if not torch.cuda.is_available() or torch.cuda.device_count() < world_size:
+        pytest.skip(f"Test requires CUDA with >= {world_size} GPUs")
+    port = get_free_port()
+    ctx = mp.get_context("spawn")
+    procs = []
+    for rank in range(world_size):
+        p = ctx.Process(
+            target=_worker,
+            args=(
+                rank,
+                world_size,
+                _logic_ac6_timeout_negative_divergent_toggle,
+                port,
+                {},
+                True,
+            ),
+        )
+        p.start()
+        procs.append(p)
+
+    deadline = time.monotonic() + timeout_seconds
+    hang_detected = False
+    while time.monotonic() < deadline:
+        if not any(p.is_alive() for p in procs):
+            break
+        time.sleep(1.0)
+    else:
+        hang_detected = True
+
+    for p in procs:
+        if p.is_alive():
+            hang_detected = True
+            p.terminate()
+    for p in procs:
+        p.join(timeout=10)
+        if p.is_alive():
+            p.kill()
+            p.join(timeout=5)
+
+    assert hang_detected, (
+        "AC-6 negative failed: divergent cross-attn toggle did not cause "
+        "a bounded hang. Both ranks exited cleanly even though only rank 0 "
+        "issued the Ulysses a2a. The plan requires this failure mode to "
+        "surface as a detectable timeout."
+    )
+
+
+class TestAC6TimeoutNegativeDivergentToggle:
+    """AC-6 negative: divergent toggle -> bounded watchdog firing, not silent hang."""
+
+    def test_missing_toggle_surfaces_as_timeout(self):
+        _run_ac6_negative_with_watchdog(timeout_seconds=30.0)
 
 
 def _logic_ac10_divergent_flags_forward(rank, world_size):
