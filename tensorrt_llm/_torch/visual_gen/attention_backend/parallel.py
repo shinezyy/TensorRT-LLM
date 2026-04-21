@@ -384,3 +384,15 @@ class UlyssesCrossAttention(AttentionBackend):
     def support_fused_qkv(cls) -> bool:
         # S_q != S_kv precludes stacking Q with K/V in a single collective.
         return False
+
+
+# AC-9 measured-bytes sidecar hook. Installed at module import time and
+# completely inert when ``AC9_BYTES_SIDECAR`` is unset; when set, it
+# wraps the ``all_to_all_4d`` / ``all_to_all_5d`` bindings above so
+# each call from ``UlyssesCrossAttention.forward`` records its payload
+# bytes into a per-rank JSON sidecar at process exit. This is the
+# single point that lets a plan-scale ``trtllm-serve`` + ``nsys``
+# capture prove AC-9.b per rank (the reduced
+# ``ac9_nsys_driver.py`` path previously had to reimplement the same
+# monkey-patch locally).
+from . import _ac9_bytes_sidecar as _  # noqa: F401,E402  (import-for-side-effect)
