@@ -684,27 +684,23 @@ class TestUlyssesCrossAttentionMultiRank:
 class TestUlyssesCrossAttentionAC1Matrix:
     """Full AC-1 parity matrix.
 
-    The plan's AC-1 requires: ``U ∈ {2, 4, 8}``,
-    ``S_q ∈ {U·1, U·7, U·13}``, ``S_kv ∈ {U·3, U·17}``,
-    ``H ∈ {U·4, U·8}``, ``H_kv ∈ {U·4, U·1}``. A Cartesian product would
-    be ``3·3·2·2·2 = 72`` spawned test runs; we cover every multiplier
-    value with a representative sweep that visits each S/H setting at
-    least once per ``U``.
+    The plan's AC-1 requires the full Cartesian product of:
+    ``U ∈ {2, 4, 8}``, ``S_q ∈ {U·1, U·7, U·13}``, ``S_kv ∈ {U·3, U·17}``,
+    ``H ∈ {U·4, U·8}``, ``H_kv ∈ {U·4, U·1}``, i.e. ``3·3·2·2·2 = 72``
+    parity cases. Each case is a separate ``mp.spawn`` run at the
+    corresponding ``world_size``; runtime is dominated by spawn overhead
+    (≈15s per case) rather than compute.
     """
 
-    # Each row: (world_size, s_q_mult, s_kv_mult, h_mult, h_kv_mult).
-    # The sweep touches every multiplier in the plan matrix at least once.
     _MATRIX = [
-        (2, 1, 3, 4, 4),
-        (2, 7, 17, 8, 1),
-        (2, 13, 3, 4, 4),
-        (4, 1, 17, 8, 4),
-        (4, 7, 3, 4, 1),
-        (4, 13, 17, 8, 4),
-        (8, 1, 3, 4, 1),
-        (8, 7, 17, 8, 4),
-        (8, 13, 3, 4, 4),
+        (U, s_q_m, s_kv_m, h_m, h_kv_m)
+        for U in (2, 4, 8)
+        for s_q_m in (1, 7, 13)
+        for s_kv_m in (3, 17)
+        for h_m in (4, 8)
+        for h_kv_m in (4, 1)
     ]
+    assert len(_MATRIX) == 72, f"AC-1 matrix must cover 72 cases, got {len(_MATRIX)}"
 
     @pytest.mark.parametrize(
         "world_size,s_q_mult,s_kv_mult,h_mult,h_kv_mult", _MATRIX
@@ -730,7 +726,7 @@ class TestUlyssesCrossAttentionAC1Matrix:
             ):
                 os.environ.pop(key, None)
 
-    @pytest.mark.parametrize("world_size", [2, 4])
+    @pytest.mark.parametrize("world_size", [2, 4, 8])
     def test_rope_commutativity(self, world_size):
         """Pre-a2a sharded RoPE matches post-a2a full-seq RoPE under bf16 tolerance."""
         _run_distributed(
