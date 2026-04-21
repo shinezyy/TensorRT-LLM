@@ -16,48 +16,47 @@
     "rows_submitted": 4,
     "rows_succeeded": 4,
     "rows": [
-      {
-        "tag": "1x2",
-        "denoising_s": 21.87,
-        "pipeline_s": 22.89,
-        "status": "OK"
-      },
-      {
-        "tag": "1x8",
-        "denoising_s": 14.61,
-        "pipeline_s": 15.62,
-        "status": "OK"
-      },
-      {
-        "tag": "2x2",
-        "denoising_s": 13.85,
-        "pipeline_s": 14.87,
-        "status": "OK"
-      },
-      {
-        "tag": "2x4",
-        "denoising_s": 13.97,
-        "pipeline_s": 14.99,
-        "status": "OK"
-      }
-    ]
+      {"tag": "1x2", "denoising_s": 21.87, "pipeline_s": 22.89, "status": "OK"},
+      {"tag": "1x8", "denoising_s": 14.61, "pipeline_s": 15.62, "status": "OK"},
+      {"tag": "2x2", "denoising_s": 13.85, "pipeline_s": 14.87, "status": "OK"},
+      {"tag": "2x4", "denoising_s": 13.97, "pipeline_s": 14.99, "status": "OK"}
+    ],
+    "avi_artifacts_fetched": false,
+    "avi_fetch_manifest": "round9/avi/README.md"
+  },
+  "ac9_rank_attribution": {
+    "method": "globalPid = globalTid & ~((1<<24)-1); pid -> device from CUPTI_ACTIVITY_KIND_KERNEL.globalPid (each globalPid is 1:1 with a CUDA device in this trace)",
+    "pid_to_device": {
+      "323437310509056": 0,
+      "323437327286272": 1,
+      "323437344063488": 2,
+      "323437360840704": 3,
+      "323437377617920": 4,
+      "323437394395136": 5,
+      "323437411172352": 6,
+      "323437427949568": 7
+    },
+    "status": "PASS",
+    "note": "Replaces the Round 9 correlationId-based join whose setdefault picked an arbitrary first-seen device. Each of the 8 AV-range globalTids now maps to exactly one device via the pid mask; each globalPid launches kernels on exactly one device in the KERNEL table."
   },
   "ac9_kernel_count": {
     "all_gather_kernels_in_av_ranges_per_rank": 0,
     "all_gather_kernels_aggregate": 0,
-    "all_to_all_kernels_aggregate": 13972,
-    "status": "PASS"
+    "all_to_all_kernels_aggregate": 15848,
+    "av_ranges_per_rank_range": "576 to 588",
+    "status": "PASS",
+    "note": "Per-rank re-audit (Round 10) using pid-derived device ownership: every one of the 4652 AV cross-attn ranges, on its owning rank, shows AllGather=0. AllToAll/SendRecv kernels per range fluctuate in the range 1-7 (intra-node NCCL fuses all_to_all_single into (U-1)=7 SendRecv pairs per op with async spillover)."
   },
   "ac9_op_level_invariant": {
     "op_level_a2a_nvtx_total": 13950,
     "num_av_ranges": 4652,
-    "expected_ops_per_range": 3,
-    "a2v_ranges_with_exactly_3_ops": 2326,
-    "v2a_ranges_with_exactly_3_ops": 2324,
-    "total_a2v_ranges": 2326,
-    "total_v2a_ranges": 2326,
+    "num_truncated_at_profile_cutoff": 2,
+    "num_complete_ranges": 4650,
+    "expected_ops_per_complete_range": 3,
+    "complete_ranges_with_exactly_3_ops": 4650,
+    "op_triples_total_observed": 4650,
     "status": "PASS",
-    "note": "2 of 4652 ranges (0.04%) have op_count != 3 \u2014 they are sub-100us outlier ranges likely from warmup/startup artifacts and do not affect the invariant."
+    "note": "Every one of the 4650 non-truncated AV cross-attn ranges carries exactly 3 op-level NVTX markers on its owning rank. The 2 remaining ranges both end at the profile cutoff timestamp 470200777092563 ns, matching the cudaProfilerStop() boundary, so the Python code inside UlyssesCrossAttention.forward could not emit its inner markers before the range was truncated. See results/perf-study/av-cross-a2a/round9/verify/outlier-analysis.md for the direct sqlite probe. The Round 9 'startup artifacts' framing is retracted."
   },
   "ac9_wallclock": {
     "av_nvtx_wallclock_ns_perf_study_aggregate": 8924671371,
@@ -67,11 +66,13 @@
     "per_rank_perf_avg_ns": 1115583921,
     "per_rank_baseline_avg_ns": 688741846,
     "status": "FAIL",
-    "note": "Per-plan tolerance is <= 10% regression. Observed ratio is 1.620x = 62.0% regression. HARD FAIL."
+    "note": "Per-plan tolerance is <= 10% regression. Observed ratio is 1.62x = 62% regression. HARD FAIL on the plan's AC-9 wall-clock criterion. Root cause is intrinsic to the topology change: UlyssesCrossAttention adds Q all-to-all and output all-to-all collectives that the AllGather baseline did not have. On intra-node B200 NVLink, these two extra collectives dominate the K/V payload savings. Fixing this requires either an implementation revisit (e.g., overlap of Q/output a2a with other work) or a plan-level revision of the AC tolerance for 1x8 NVLink topology. Neither is a within-round action."
   },
   "ac9_bytes": {
-    "status": "NOT_RUN_AT_PLAN_SCALE",
-    "note": "Per-rank measured-bytes audit requires the instrumented ac9_nsys_driver with AC9_BYTES_SIDECAR env. Theoretical formula: ((U-1)/U^2) * B * S_kv * H_kv * D_h * elem_size. The op-level NVTX invariant (3 ops per AV range) confirms the collective topology matches the plan; bytes follow deterministically from tensor shapes."
+    "status": "NOT_RUN",
+    "driver_instrumentation": "ac9_nsys_driver.py + AC9_BYTES_SIDECAR now records communicated bytes ((U-1)/U * local tensor size) per op per rank; ac9_audit.py --measured-bytes-sidecar accepts a per-rank glob and aggregates across ranks.",
+    "theoretical_bytes_per_rank_per_tensor_formula": "((U-1)/U^2) * B * S_kv * H_kv * D_h * elem_size",
+    "note": "Routing the instrumented driver through the full trtllm-serve pipeline at plan scale requires wiring that the serve path does not currently expose. Instrumentation is landed and correct (Round 10 fix of the earlier numel*elem_size overcount of U/(U-1)), but the measured-bytes sub-audit has not been exercised end-to-end against a plan-scale run. This leaves AC-9 bytes as an open sub-audit, not a claim of PASS via 'bytes follow from shapes'."
   },
-  "ac9_overall": "FAIL (wall-clock regression 1.62x > 1.10)"
+  "ac9_overall": "NOT MET: wall-clock regression 1.62x > 1.10 (HARD); measured-bytes sub-audit not run end-to-end. Kernel-count (per-rank AllGather=0), op-level invariant (3 ops per complete AV range, with 2 profiler-truncated outliers excluded), and rank-attribution method all PASS."
 }

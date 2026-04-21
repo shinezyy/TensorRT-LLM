@@ -1,0 +1,6 @@
+0: [2026-04-21T09:35:31.772] error:  mpi/pmix_v5: _errhandler: prenyx0017 [0]: pmixp_client_v2.c:230: Error handler invoked: status = -61, source = [slurm.pmix.2110264.0:0]
+0: [2026-04-21T09:35:31.776] error: *** STEP 2110264.0 ON prenyx0017 CANCELLED AT 2026-04-21T09:35:31 DUE to SIGNAL Killed ***
+srun: Job step aborted: Waiting up to 122 seconds for job step to finish.
+0: [2026-04-21T09:35:33.017] error:  mpi/pmix_v5: _errhandler: prenyx0017 [0]: pmixp_client_v2.c:230: Error handler invoked: status = -61, source = [slurm.pmix.2110264.0:0]
+srun: error: prenyx0017: task 0: Killed
+srun: Terminating StepId=2110264.0

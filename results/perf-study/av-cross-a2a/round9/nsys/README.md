@@ -15,12 +15,12 @@ bash /Users/yaoyangz/projects/cc-skills/plugins/aigv-bench-dev1/scripts/bench-vi
 cp results/bench-visual-gen/round9-nsys-perf_20260422_002932/ltx2-t2v-sfp4-vanilla-1x8-cache0-tcompile1-cg0/nsys/profile.{sqlite,nsys-rep} results/perf-study/av-cross-a2a/round9/nsys/perf-study/
 cp results/bench-visual-gen/round9-nsys-baseline-v2_20260422_012719/ltx2-t2v-sfp4-vanilla-1x8-cache0-tcompile1-cg0/nsys/profile.{sqlite,nsys-rep} results/perf-study/av-cross-a2a/round9/nsys/baseline/
 
-# Run audit
+# Run audit (Round 10 per-rank-fixed version)
 python3 tests/unittest/_torch/visual_gen/multi_gpu/_u8_drivers/ac9_audit.py \
   results/perf-study/av-cross-a2a/round9/nsys/perf-study/profile.sqlite \
   --baseline-sqlite results/perf-study/av-cross-a2a/round9/nsys/baseline/profile.sqlite \
-  > results/perf-study/av-cross-a2a/round9/verify/audit-perf-vs-baseline.json \
-  2> results/perf-study/av-cross-a2a/round9/verify/audit-perf-vs-baseline.err
+  > results/perf-study/av-cross-a2a/round9/verify/audit-perf-vs-baseline-r10.json \
+  2> results/perf-study/av-cross-a2a/round9/verify/audit-perf-vs-baseline-r10.err
 ```
 
 Remote SLURM jobs for reproduction:

@@ -45,8 +45,14 @@ against the new container (tag `round9-a2a-sweep_20260422_002811`).
 | 2x2 | 4 | 13.85s | 14.87s | OK |
 | 2x4 | 8 | 13.97s | 14.99s | OK |
 
-All 4 rows produced `.avi` output and reported `Successful requests: 1,
-Failed requests: 0`.
+All 4 rows completed with `Successful requests: 1, Failed requests: 0`.
+Fetched per-test logs / serve configs / benchmark JSONs landed under
+`round9/avi/`. The earlier "produced `.avi` output" phrasing was
+inaccurate and is retracted in Round 10: the `openai-videos` benchmark
+client receives the video bytes in the HTTP response and records
+timing into `openai-videos-*.json` but does not persist the video
+payload to disk. See `round9/avi/README.md` for the full explanation
+and the fetch command.
 
 ## task24 — 1x8 nsys captures
 
@@ -72,31 +78,48 @@ python tests/unittest/_torch/visual_gen/multi_gpu/_u8_drivers/ac9_audit.py \
     <perf-study>.sqlite --baseline-sqlite <baseline>.sqlite
 ```
 
-### Kernel-count half — PASS
+### Kernel-count half — PASS (revised in Round 10)
 
 - `AllGather` kernels **in every AV cross-attn range, on its owning rank**: **0**.
-- `AllToAll` / `SendRecv` kernels globally inside AV ranges: 13972 (> 0).
-- Initial audit incorrectly reported 7 AllGather kernels inside AV ranges
-  because the cross-rank multi-GPU trace mixes all 8 ranks' NVTX in one
-  file and my first counter didn't filter by owning GPU. After adding a
-  tid→device map via `CUPTI_ACTIVITY_KIND_RUNTIME` correlation, the per-
-  rank AllGather count is exactly 0 in every AV range. The 7 aggregate
-  matches were from audio/video self-attn AllGathers on OTHER ranks
-  happening concurrently.
+- `AllToAll` / `SendRecv` kernels globally inside AV ranges: 15848 (> 0).
+- **Round 10 correction**: Round 9's first fix of the initial
+  cross-rank false-positive used a `CUPTI_ACTIVITY_KIND_RUNTIME` /
+  `CUPTI_ACTIVITY_KIND_KERNEL` correlation-join with `setdefault`. Codex
+  correctly rejected that approach because `correlationId` is
+  per-process and collides across ranks in a merged trace, so the
+  `setdefault` picked an arbitrary device for each globalTid. The
+  corrected attribution in Round 10 uses nsys's own encoding:
+  `globalPid = globalTid & ~((1<<24)-1)`, and each process's globalPid
+  maps 1:1 to a single device in `CUPTI_ACTIVITY_KIND_KERNEL` (verified
+  by direct sqlite probe: every globalPid launches kernels on exactly
+  one deviceId). The committed sqlite's 8 AV-range globalTids resolve
+  to devices 0-7 with no ambiguity. The AllGather=0 result is
+  unchanged, but is now backed by trustworthy per-rank attribution.
+  See `round9/verify/summary.json` → `ac9_rank_attribution`.
 
-### Op-level per-range invariant — PASS
+### Op-level per-range invariant — PASS (revised in Round 10)
 
 Using the 3 op-level NVTX markers inserted in Round 6 inside
 `UlyssesCrossAttention.forward`
-(`ulysses.cross.a2a.{q,kv,out}`):
+(`ulysses.cross.a2a.{q,kv,out}`), with the Round 10 per-rank
+attribution fix:
 
 - `ltx2.a2v_cross_attn`: **2326/2326 ranges** have exactly 3 op-level markers.
-- `ltx2.v2a_cross_attn`: **2324/2326 ranges** have exactly 3; 2 outlier
-  ranges (both sub-100 μs) have 0 markers — likely warmup/startup
-  artifacts. 99.96% hit rate.
+- `ltx2.v2a_cross_attn`: **2324/2326 ranges** have exactly 3.
+- The remaining **2 ranges** are NOT sub-100us startup/warmup artifacts
+  as Round 9 first claimed. Direct sqlite probing in Round 10 shows
+  both end at the exact nanosecond of the profile cutoff
+  (`470 200 777 092 563 ns`, i.e. the `cudaProfilerStop()` boundary),
+  so the Python code inside `UlyssesCrossAttention.forward` was
+  truncated before it could push its inner NVTX markers. See
+  `round9/verify/outlier-analysis.md`. These two ranges are now
+  classified as `truncated_at_profile_cutoff=true` in the audit and
+  excluded from the invariant assertion (profiler-stop truncation is
+  orthogonal to the implementation).
 
-This confirms the plan's "exactly 3 a2a OPs per AV range" invariant at
-the implementation-independent op level.
+The 4650 non-truncated AV cross-attn ranges all carry exactly 3
+op-level markers on their owning rank, satisfying the plan's "exactly
+3 a2a OPs per AV range" invariant.
 
 ### Wall-clock regression — **FAIL**
 
@@ -119,30 +142,51 @@ per layer: a Q all-to-all and an output all-to-all that the AllGather
 baseline did not have. On intra-node 1x8 B200 NVLink topology, these
 extra collectives dominate the savings from the smaller K/V payload.
 
-### Byte audit — Not run at plan scale
+### Byte audit — NOT RUN (instrumentation fixed in Round 10, still not exercised end-to-end)
 
 The theoretical byte formula (`((U-1)/U²) · B · S_kv · H_kv · D_h ·
-elem_size`) is recorded in `ac9_audit.py` as a reference. A per-rank
-measured-byte path exists in `ac9_nsys_driver.py` (gated by
-`AC9_BYTES_SIDECAR` env), but running it through the full
+elem_size`) is recorded in `ac9_audit.py` as a reference.
+
+**Round 10 fix**: `ac9_nsys_driver.py` under `AC9_BYTES_SIDECAR` was
+recording `element_size * numel()` (the full local tensor size), which
+overcounts communicated bytes by `U/(U-1)` (≈ 14% at U=8) before any
+audit-side math. Round 10 corrects the driver to record both the raw
+local size and the communicated portion
+(`elem_size * numel * (U-1) / U`), and teaches `ac9_audit.py` to
+ingest per-rank sidecar files (`_rank{r}.json`) via a glob and
+aggregate across ranks rather than consuming a single JSON.
+
+**Still not run**: routing the instrumented driver through the full
 `trtllm-serve` pipeline at plan scale requires extra wiring the serve
-path does not currently expose. The op-level NVTX invariant (exactly 3
-a2a OPs per AV range) combined with the deterministic tensor shapes
-(fully specified by B, S_kv, H_kv, D_h, U in the serve config) makes
-the byte count redundant with the op-level check — each op processes a
-known-shape tensor, so bytes follow from shape × elem_size. This is
-documented rather than empirically verified for this round.
+path does not currently expose, and running the standalone driver at
+1×8 under nsys is a separate SLURM submission that was not executed
+this round. Consequently AC-9's measured-byte sub-audit remains an
+open item rather than a PASS.
 
-## AC-9 overall verdict
+The Round 9 framing — "bytes follow deterministically from ops + shapes,
+so the op-level check is sufficient" — is retracted. The plan's AC-9
+wording is explicit that measured bytes must be within ±10% of the
+theoretical value, and a deterministic-shape argument is not a
+substitute for the measurement the AC requires.
 
-- Kernel-count half: **PASS** (per-rank AllGather=0; AllToAll/SendRecv
-  present).
-- Op-level invariant: **PASS** (3 ops per AV range, 99.96%).
+## AC-9 overall verdict (revised Round 10)
+
+- Rank attribution: **PASS** — globalTid → globalPid → device is 1:1
+  (verified by direct sqlite probe; see `verify/summary.json` →
+  `ac9_rank_attribution`).
+- Kernel-count half: **PASS** (per-rank AllGather=0 in every AV range;
+  AllToAll/SendRecv kernels present globally = 15848).
+- Op-level invariant: **PASS** (4650/4650 complete ranges have exactly
+  3 op-level markers; 2 profiler-stop-truncated ranges excluded, see
+  `verify/outlier-analysis.md`).
+- Byte audit: **NOT RUN end-to-end** — instrumentation corrected in
+  Round 10 (see Byte audit section above) but not exercised at plan
+  scale.
 - Wall-clock regression: **FAIL** (1.62x, plan requires ≤1.10).
-- Byte audit: **Deferred** (topology follows from ops + shapes; not
-  empirically recorded this round).
 
-**Overall: AC-9 does NOT pass the plan's HARD wall-clock criterion.**
+**Overall: AC-9 does NOT pass. Kernel-count and op-level invariant
+are clean; the measured-byte sub-audit has not been run end-to-end;
+the wall-clock HARD criterion fails by a wide margin.**
 
 This is an honest test outcome. The implementation correctly enforces
 the strict-Ulysses a2a topology, but does not deliver the expected

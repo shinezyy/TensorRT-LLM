@@ -41,20 +41,35 @@ sys.path.insert(0, str(_MULTI_GPU_DIR))
 
 
 _BYTES_COUNTERS = {
-    "a2a_q_bytes_per_call": [],
-    "a2a_kv_bytes_per_call": [],
-    "a2a_out_bytes_per_call": [],
+    # ``_local`` holds raw ``elem_size * numel`` (the full local tensor
+    # size on the calling rank). Informational only.
+    "a2a_q_bytes_local_per_call": [],
+    "a2a_kv_bytes_local_per_call": [],
+    "a2a_out_bytes_local_per_call": [],
+    # ``_communicated`` holds the portion of the local tensor that is
+    # actually sent (and received) by the rank in one all-to-all op:
+    # ``elem_size * numel * (U - 1) / U``. This is the quantity that
+    # matches the plan's theoretical per-rank-per-tensor byte count of
+    # ``((U - 1) / U^2) * B * S_kv * H_kv * D_h * elem_size`` after
+    # dividing the fused K|V figure by 2 (K + V stacked on dim=2 of the
+    # 5D input tensor).
+    "a2a_q_bytes_communicated_per_call": [],
+    "a2a_kv_bytes_communicated_per_call": [],
+    "a2a_out_bytes_communicated_per_call": [],
 }
 
 
-def _install_bytes_counters():
+def _install_bytes_counters(ulysses_size: int):
     """Patch ``all_to_all_4d`` / ``all_to_all_5d`` to record payload bytes.
 
     ``UlyssesCrossAttention.forward`` calls them with explicit tensor
-    shapes known at call time; we compute ``elem_size * numel`` before
-    the collective and accumulate per-op. Three NVTX ranges in
-    ``UlyssesCrossAttention.forward`` (``ulysses.cross.a2a.{q,kv,out}``)
-    tell us which op this call is for via a small tracker.
+    shapes known at call time; we compute both the raw local tensor size
+    (``elem_size * numel``, informational) and the communicated portion
+    (``elem_size * numel * (U - 1) / U``, comparable to the plan's
+    theoretical value) before the collective and accumulate per-op.
+    Three NVTX ranges in ``UlyssesCrossAttention.forward``
+    (``ulysses.cross.a2a.{q,kv,out}``) tell us which op this call is
+    for via a small tracker.
     """
     from tensorrt_llm._torch import distributed as _dist_mod
 
@@ -89,20 +104,24 @@ def _install_bytes_counters():
     torch.cuda.nvtx.range_push = _push
     torch.cuda.nvtx.range_pop = _pop
 
+    def _record(kind: str, t):
+        local = t.element_size() * t.numel()
+        communicated = (local * (ulysses_size - 1)) // ulysses_size
+        _BYTES_COUNTERS[f"a2a_{kind}_bytes_local_per_call"].append(local)
+        _BYTES_COUNTERS[f"a2a_{kind}_bytes_communicated_per_call"].append(communicated)
+
     def _wrap_4d(t, *a, **kw):
         label = _active.stack[-1] if getattr(_active, "stack", None) else ""
-        bytes_ = t.element_size() * t.numel()
         if label == "ulysses.cross.a2a.q":
-            _BYTES_COUNTERS["a2a_q_bytes_per_call"].append(bytes_)
+            _record("q", t)
         elif label == "ulysses.cross.a2a.out":
-            _BYTES_COUNTERS["a2a_out_bytes_per_call"].append(bytes_)
+            _record("out", t)
         return _orig_4d(t, *a, **kw)
 
     def _wrap_5d(t, *a, **kw):
         label = _active.stack[-1] if getattr(_active, "stack", None) else ""
-        bytes_ = t.element_size() * t.numel()
         if label == "ulysses.cross.a2a.kv":
-            _BYTES_COUNTERS["a2a_kv_bytes_per_call"].append(bytes_)
+            _record("kv", t)
         return _orig_5d(t, *a, **kw)
 
     _dist_mod.all_to_all_4d = _wrap_4d
@@ -126,7 +145,7 @@ def main(num_iters: int = 3) -> None:
     dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
 
     if os.environ.get("AC9_BYTES_SIDECAR"):
-        _install_bytes_counters()
+        _install_bytes_counters(ulysses_size=world_size)
 
     from test_ltx2_ulysses_cross_attn_parity import (
         _AV_CONFIG,
@@ -176,8 +195,10 @@ def main(num_iters: int = 3) -> None:
             for k, v in _BYTES_COUNTERS.items()
         }
         out["num_iters_measured"] = num_iters
+        out["ulysses_size"] = world_size
         out["per_call_counts"] = {k: len(v) for k, v in _BYTES_COUNTERS.items()}
-        out["a2a_kv_bytes_per_call_samples"] = _BYTES_COUNTERS["a2a_kv_bytes_per_call"]
+        out["a2a_kv_bytes_communicated_per_call_samples"] = \
+            _BYTES_COUNTERS["a2a_kv_bytes_communicated_per_call"]
         sidecar_path.parent.mkdir(parents=True, exist_ok=True)
         sidecar_path.write_text(_json.dumps(out, indent=2))
 

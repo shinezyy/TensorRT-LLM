@@ -1,0 +1,13 @@
+attention:
+  backend: VANILLA
+parallel:
+  dit_cfg_size: 2
+  dit_ulysses_size: 4
+teacache:
+  enable_teacache: false
+checkpoint_path: /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08
+text_encoder_path: /lustre/fsw/coreai_comparch_infbench/common/cache/hub/gemma-3-12b-it
+cuda_graph:
+  enable_cuda_graph: false
+torch_compile:
+  enable_torch_compile: true

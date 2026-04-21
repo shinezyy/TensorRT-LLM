@@ -1,0 +1,33 @@
+{
+  "date": "20260422-003945",
+  "backend": "openai-videos",
+  "model_id": "/lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08",
+  "num_prompts": 1,
+  "model": "/lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08",
+  "duration": 20.054422539949883,
+  "num_gpus": 8,
+  "total_requests": 1,
+  "completed": 1,
+  "request_throughput": 0.04986431287203242,
+  "per_gpu_throughput": 0.006233039109004052,
+  "mean_e2e_latency_ms": 20052.67956003081,
+  "median_e2e_latency_ms": 20052.67956003081,
+  "std_e2e_latency_ms": 0.0,
+  "min_e2e_latency_ms": 20052.67956003081,
+  "max_e2e_latency_ms": 20052.67956003081,
+  "percentiles_e2e_latency_ms": {
+    "p50": 20052.67956003081,
+    "p90": 20052.67956003081,
+    "p99": 20052.67956003081
+  },
+  "gen_params": {
+    "size": "1280x720",
+    "seconds": 7.5625,
+    "fps": 16,
+    "num_inference_steps": 40,
+    "seed": 42
+  },
+  "request_rate": "inf",
+  "burstiness": 1.0,
+  "max_concurrency": 1
+}

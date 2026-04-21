@@ -1,0 +1,22 @@
+0: === ltx2-t2v-sfp4-vanilla-1x2-cache0-tcompile1-cg0 ===
+0: Model:  ltx2-t2v (path=/lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08) | 720x1280 121f 40steps
+0: Attn:   VANILLA | Linear: static-nvfp4 | GPUs: 2 (1x2)
+0: Mode:   serve (port 8000)
+0: Config: /lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results//results/bench-visual-gen/round9-a2a-sweep_20260422_002811/serve_configs/ltx2-t2v-sfp4-vanilla-1x2-cache0-tcompile1-cg0.yaml
+0: 
+0: === Reproduce Commands ===
+0: # 1. Start server:
+0: TLLM_LOG_LEVEL=info trtllm-serve /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08 --extra_visual_gen_options /lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results//results/bench-visual-gen/round9-a2a-sweep_20260422_002811/ltx2-t2v-sfp4-vanilla-1x2-cache0-tcompile1-cg0/serve_config.yaml --host 127.0.0.1 --port 8000
+0: 
+0: # 2. Run benchmark client:
+0: python -m tensorrt_llm.serve.scripts.benchmark_visual_gen --model /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08 --backend openai-videos --host 127.0.0.1 --port 8000 --size 1280x720 --num-frames 121 --num-inference-steps 40 --seed 42 --num-prompts ${NUM_PROMPTS:-1} --max-concurrency 1 --extra-visual-gen-options /lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results//results/bench-visual-gen/round9-a2a-sweep_20260422_002811/ltx2-t2v-sfp4-vanilla-1x2-cache0-tcompile1-cg0/serve_config.yaml --save-result --result-dir /lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results//results/bench-visual-gen/round9-a2a-sweep_20260422_002811/ltx2-t2v-sfp4-vanilla-1x2-cache0-tcompile1-cg0 --prompt 'A cat walks through a field of flowers'
+0: =========================
+0: 
+0: IPC: tcp://127.0.0.1:10012
+0: Starting trtllm-serve on port 8000...
+0: Waiting for server health...
+0: Server healthy after 190s
+0: 
+0: Running benchmark client (backend=openai-videos)...
+0: Benchmark finished (exit code: 0)
+0: Cleaning up server (PID 1469228)...

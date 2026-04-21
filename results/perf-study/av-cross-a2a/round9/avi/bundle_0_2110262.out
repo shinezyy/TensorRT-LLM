@@ -1,0 +1,34 @@
+==========================================
+Packed Bundle — Job 2110262
+==========================================
+Bundle CSV:     /lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results//results/bench-visual-gen/round9-a2a-sweep_20260422_002811/bundles/bundle_0.csv
+Bundle size:    1 jobs
+GPUs per job:   8
+Slots/round:    1
+Container:      /lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r9.sqfs
+Batch dir:      round9-a2a-sweep_20260422_002811
+Serve configs:  /lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results//results/bench-visual-gen/round9-a2a-sweep_20260422_002811/serve_configs
+Node:           prenyx0035
+==========================================
+
+Initializing container...
+Container ready: vg-packed-2110262
+Container ready: vg-packed-2110262
+Container ready: vg-packed-2110262
+Container ready: vg-packed-2110262
+Container ready: vg-packed-2110262
+Container ready: vg-packed-2110262
+Container ready: vg-packed-2110262
+Container ready: vg-packed-2110262
+
+Launching 1 jobs...
+  [0] ltx2-t2v-sfp4-vanilla-1x8-cache0-tcompile1-cg0 | GPUs=0,1,2,3,4,5,6,7 | Port=8000 | IPC=10012
+
+All 1 jobs launched. Waiting for completion...
+
+All jobs have timing results. Waiting 60s for clean exit...
+  [ltx2-t2v-sfp4-vanilla-1x8-cache0-tcompile1-cg0] PASSED
+
+==========================================
+Bundle complete: 1 passed, 0 failed / 1 total
+==========================================
