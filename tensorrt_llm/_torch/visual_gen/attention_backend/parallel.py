@@ -250,6 +250,7 @@ class UlyssesCrossAttention(AttentionBackend):
             # travel in one collective. Layout:
             #   [B, S_kv/U, 2, H_kv, D] -> [B, S_kv, 2, H_kv/U, D]
             kv = torch.stack([k, v], dim=2)
+            self._assert_fused_kv_stack_shape(kv)
             kv = all_to_all_5d(
                 kv, scatter_dim=3, gather_dim=1, process_group=self.process_group
             )
@@ -276,6 +277,27 @@ class UlyssesCrossAttention(AttentionBackend):
             )
 
         return out
+
+    @staticmethod
+    def _assert_fused_kv_stack_shape(kv: torch.Tensor) -> None:
+        """Guard: the fused K|V all-to-all path expects ``(K, V)`` stacked on ``dim=2``.
+
+        ``all_to_all_5d`` is generic over ``dim=2`` (it also supports a fused
+        ``Q|K|V`` stack of size 3 elsewhere in the code base), so the primitive
+        does NOT enforce the K|V size-2 contract on its own. This assertion
+        is the single named choke point inside ``UlyssesCrossAttention``; if a
+        future refactor accidentally stacks anything other than ``(K, V)`` on
+        ``dim=2`` the error fires loudly instead of silently mis-sharding the
+        downstream ``unbind(dim=2)``.
+        """
+        assert kv.ndim == 5, (
+            f"fused K|V stack must be 5D [B, S/U, 2, H_kv, D], got {kv.ndim}D"
+        )
+        assert kv.shape[2] == 2, (
+            f"UlyssesCrossAttention fused K|V stack must have dim=2 size 2 "
+            f"(got {kv.shape[2]}). The wrapper stacks exactly (K, V); any "
+            "other size indicates a caller or subclass bug."
+        )
 
     @property
     def preferred_layout(self) -> AttentionTensorLayout:

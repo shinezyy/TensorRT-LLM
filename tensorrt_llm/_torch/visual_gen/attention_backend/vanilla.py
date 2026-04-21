@@ -128,8 +128,13 @@ class VanillaAttention(AttentionBackend):
                 attn_mask = attn_mask & causal
                 is_causal = False
 
+        sdpa_kwargs = {}
+        if self.num_kv_heads != self.num_heads:
+            # PyTorch 2.5+: SDPA honors the GQA ratio when enable_gqa=True.
+            sdpa_kwargs["enable_gqa"] = True
         return F.scaled_dot_product_attention(
-            q, k, v, attn_mask=attn_mask, is_causal=is_causal, scale=self.scale
+            q, k, v, attn_mask=attn_mask, is_causal=is_causal, scale=self.scale,
+            **sdpa_kwargs,
         )
 
     @property

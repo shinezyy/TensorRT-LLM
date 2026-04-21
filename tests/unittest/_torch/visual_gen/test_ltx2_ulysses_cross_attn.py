@@ -177,10 +177,10 @@ class TestAC72AC73AC74ResolvedBackend(unittest.TestCase):
         )
 
     def test_ac72_non_vanilla_audio_attn1_under_ulysses_raises(self):
-        # FLASH_ATTN4 for self-attention is not substituted to VANILLA and
+        # FA4 for self-attention is not substituted to VANILLA and
         # does not honor key_padding_mask — must raise at construction.
         with pytest.raises(ValueError) as exc:
-            self._make_block(backend="FLASH_ATTN4", ulysses_size=2)
+            self._make_block(backend="FA4", ulysses_size=2)
         assert "audio_attn1" in str(exc.value)
         assert "VANILLA" in str(exc.value)
 
@@ -506,6 +506,57 @@ class TestWiringCleanup(unittest.TestCase):
         assert not hasattr(block, "_sp_gather_pe"), (
             "_sp_gather_pe must be deleted — the A2A pattern replaces it."
         )
+
+
+class TestAC8TorchCompileSmoke(unittest.TestCase):
+    """AC-8: ``torch.compile(mode='default')`` accepts the new ``key_padding_mask`` kwarg.
+
+    Smoke test at ``ulysses_size=1`` so the wrapper's fast path is exercised
+    end-to-end under compile. CUDA-graph compat is left to the cluster
+    bring-up / AC-9 audit where the real ``_LTX2CUDAGraphRunner`` runs on
+    full-size LTX2 shapes.
+    """
+
+    @pytest.mark.skipif(
+        not torch.cuda.is_available(), reason="torch.compile smoke needs a CUDA device"
+    )
+    def test_ltx2_attention_forward_compiles_with_key_padding_mask(self):
+        cfg = _make_model_config(backend="VANILLA", ulysses_size=1)
+        attn = (
+            LTX2Attention(
+                query_dim=128,
+                context_dim=None,  # Self-attention.
+                heads=4,
+                dim_head=32,
+                config=cfg,
+                use_ulysses=False,
+            )
+            .to(dtype=torch.bfloat16, device="cuda")
+            .eval()
+        )
+        with torch.no_grad():
+            for name, p in attn.named_parameters():
+                if "norm" in name and "weight" in name:
+                    p.fill_(1.0)
+                elif p.numel() > 0:
+                    p.normal_(mean=0.0, std=0.02)
+
+        batch, s_q, query_dim = 1, 6, 128
+        head_dim = 32
+        x = torch.randn(batch, s_q, query_dim, dtype=torch.bfloat16, device="cuda")
+        cos = torch.ones(batch, s_q, query_dim, dtype=torch.bfloat16, device="cuda")
+        sin = torch.zeros(batch, s_q, query_dim, dtype=torch.bfloat16, device="cuda")
+        pad_mask = torch.ones(batch, s_q, dtype=torch.bool, device="cuda")
+        pad_mask[:, -2:] = False
+
+        # Compile the forward method with the new signature.
+        compiled_forward = torch.compile(attn.forward, mode="default")
+        with torch.no_grad():
+            out = compiled_forward(x, pe=(cos, sin), key_padding_mask=pad_mask)
+
+        # Output shape matches q shape; no NaN from the padded positions.
+        assert out.shape == (batch, s_q, query_dim)
+        assert not torch.isnan(out).any()
 
 
 if __name__ == "__main__":

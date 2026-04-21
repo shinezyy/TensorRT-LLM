@@ -192,12 +192,16 @@ def _logic_ulysses_cross_parity_vs_single_gpu(rank, world_size):
         f"got {tuple(out_shard.shape)}"
     )
 
-    # Reference: run SDPA on full tensors in HND layout.
+    # Reference: run SDPA on full tensors in HND layout. Use enable_gqa so the
+    # H_kv < H case (H=U·4, H_kv=U·2) runs correctly; the VanillaAttention
+    # backend applies the same flag internally when num_heads != num_kv_heads.
+    sdpa_kwargs = {"enable_gqa": True} if h != h_kv else {}
     ref = F.scaled_dot_product_attention(
         q_full.transpose(1, 2),
         k_full.transpose(1, 2),
         v_full.transpose(1, 2),
         scale=scale,
+        **sdpa_kwargs,
     ).transpose(1, 2).contiguous()
     expected_shard = ref[:, rank * (s_q // u) : (rank + 1) * (s_q // u)]
 
@@ -269,12 +273,18 @@ def _logic_ulysses_cross_matrix(rank, world_size):
 def _logic_ulysses_cross_rope_commutativity(rank, world_size):
     """RoPE applied pre-a2a to sharded Q/K matches RoPE applied post-a2a to full-seq.
 
-    Proves the design's RoPE commutativity claim: because RoPE is pointwise
-    on ``(seq, head_dim)`` per token, applying it to sharded Q/K with
-    sharded cos/sin before the all-to-all yields the same numerical result
-    (to bf16 tolerance) as applying it to the full-seq post-a2a tensors.
-    The wrapper's transparent kwargs forwarding never touches the cos/sin
-    tensors; the caller applies RoPE before calling ``wrapper.forward``.
+    RoPE in LTX2 is pointwise on ``(seq, head_dim)`` per token — broadcast
+    across heads. The per-head invariance is what makes the operation
+    commute with Ulysses: applying RoPE on seq-sharded Q/K with seq-sharded
+    cos/sin before the all-to-all yields the same numerical result as
+    applying RoPE on full-seq Q/K after the all-to-all (because heads are
+    redistributed, but each token-position's RoPE twist is head-independent).
+
+    To preserve that invariance in the test, the cos/sin tensors must be
+    broadcastable across BOTH the heads axis AND the a2a reshape. We use
+    shape ``[1, S, 1, D]`` with broadcast along head dim = 1; the inner
+    backend sees ``[B, S, H/U, D]`` and the per-position cos/sin multiply
+    identically on every head.
     """
     batch = 1
     u = world_size
@@ -285,27 +295,24 @@ def _logic_ulysses_cross_rope_commutativity(rank, world_size):
     head_dim = 32
     scale = 1.0 / math.sqrt(head_dim)
 
-    torch.manual_seed(314159 + rank)
+    torch.manual_seed(314159)  # Same seed across ranks so full tensors match.
     q_full = torch.randn(batch, s_q, h, head_dim)
     k_full = torch.randn(batch, s_kv, h_kv, head_dim)
     v_full = torch.randn(batch, s_kv, h_kv, head_dim)
-
-    # A simple RoPE-shaped rotation: separate (cos, sin) per position and per head.
     cos_q = torch.randn(1, s_q, 1, head_dim) * 0.1 + 1.0
     sin_q = torch.randn(1, s_q, 1, head_dim) * 0.1
     cos_k = torch.randn(1, s_kv, 1, head_dim) * 0.1 + 1.0
     sin_k = torch.randn(1, s_kv, 1, head_dim) * 0.1
 
     def _apply_rope(x, cos, sin):
-        # Treat second half of head_dim as rotated (interleaved-style is irrelevant here;
-        # we just need a pointwise-per-token op that depends on the seq index).
         half = head_dim // 2
         x1, x2 = x[..., :half], x[..., half:]
         r1 = x1 * cos[..., :half] - x2 * sin[..., :half]
         r2 = x2 * cos[..., half:] + x1 * sin[..., half:]
         return torch.cat([r1, r2], dim=-1)
 
-    # Path A: apply RoPE pre-a2a on shards.
+    # Path A: apply RoPE pre-a2a on the rank's shards with the corresponding
+    # seq-sliced cos/sin.
     q_sh = q_full[:, rank * (s_q // u) : (rank + 1) * (s_q // u)].contiguous()
     k_sh = k_full[:, rank * (s_kv // u) : (rank + 1) * (s_kv // u)].contiguous()
     v_sh = v_full[:, rank * (s_kv // u) : (rank + 1) * (s_kv // u)].contiguous()
@@ -439,55 +446,67 @@ def _logic_ulysses_cross_swapped_dims_negative(rank, world_size):
             return out
 
     wrapper = _SwappedCrossAttn(inner_backend=inner, process_group=None)
-    out_bad = wrapper.forward(q_sh, k_sh, v_sh)
-
-    ref = F.scaled_dot_product_attention(
-        q_full.transpose(1, 2),
-        k_full.transpose(1, 2),
-        v_full.transpose(1, 2),
-        scale=scale,
-    ).transpose(1, 2).contiguous()
-    expected_shard = ref[:, rank * (s_q // u) : (rank + 1) * (s_q // u)]
-    max_diff = (out_bad - expected_shard).abs().max().item()
-    assert max_diff > 1e-2, (
-        f"Rank {rank}: expected detectable drift with swapped scatter/gather; "
-        f"got max diff {max_diff}"
+    # Either a runtime shape error OR a numerical divergence > tolerance
+    # satisfies the "fails loudly rather than produces garbage silently" contract.
+    loud_failure = False
+    try:
+        out_bad = wrapper.forward(q_sh, k_sh, v_sh)
+    except RuntimeError:
+        loud_failure = True
+    else:
+        ref = F.scaled_dot_product_attention(
+            q_full.transpose(1, 2),
+            k_full.transpose(1, 2),
+            v_full.transpose(1, 2),
+            scale=scale,
+        ).transpose(1, 2).contiguous()
+        expected_shard = ref[:, rank * (s_q // u) : (rank + 1) * (s_q // u)]
+        max_diff = (out_bad - expected_shard).abs().max().item()
+        loud_failure = max_diff > 1e-2
+    assert loud_failure, (
+        f"Rank {rank}: swapped scatter/gather silently produced a valid-looking "
+        "result; expected either a RuntimeError or a detectable numerical drift."
     )
 
 
-def _logic_a2a_5d_non_kv_stack_dim_is_generic(rank, world_size):
-    """Negative contract for AC-2: ``all_to_all_5d`` treats ``dim=2`` as generic.
-
-    The primitive supports any ``dim=2`` count (documented as 3 for fused
-    Q|K|V elsewhere, used as 2 for fused K|V here). Callers must guarantee
-    the semantic: a size-3 stack would unbind to 3 tensors, so feeding it
-    into the K|V path would be silently wrong. The test documents this
-    contract by demonstrating that ``unbind(dim=2)`` on a size-3 result
-    yields 3 tensors — the wrapper must therefore always stack exactly
-    (K, V) to obtain size 2.
-    """
+def _logic_assert_fused_kv_stack_shape_fires_on_bad_dim2(rank, world_size):
+    """AC-2 negative: ``UlyssesCrossAttention._assert_fused_kv_stack_shape`` fires on ``dim=2 != 2``."""
     batch = 1
     seq_per_rank = 2
-    wrong_count = 3  # Anything other than 2 violates the K|V contract.
-    h = world_size * 2
+    h = 4
     head_dim = 8
 
     torch.manual_seed(271828 + rank)
-    stack = torch.randn(batch, seq_per_rank, wrong_count, h, head_dim)
 
-    out = all_to_all_5d(stack, scatter_dim=3, gather_dim=1, process_group=None)
-    assert out.shape == (
-        batch,
-        seq_per_rank * world_size,
-        wrong_count,
-        h // world_size,
-        head_dim,
-    )
-    parts = out.unbind(dim=2)
-    assert len(parts) == wrong_count, (
-        f"Expected {wrong_count} parts from unbind(dim=2); got {len(parts)} "
-        "— confirms dim=2 is generic and callers must guarantee stack size 2."
-    )
+    # Wrong size at dim=2 (size 3 instead of the required 2) must raise.
+    bad_stack = torch.randn(batch, seq_per_rank, 3, h, head_dim)
+    try:
+        UlyssesCrossAttention._assert_fused_kv_stack_shape(bad_stack)
+    except AssertionError as exc:
+        assert "dim=2 size 2" in str(exc), (
+            f"Rank {rank}: expected message naming 'dim=2 size 2', got {exc!r}"
+        )
+    else:
+        raise AssertionError(
+            f"Rank {rank}: expected AssertionError for dim=2 size 3; none raised"
+        )
+
+    # Wrong ndim (not 5D) must also raise.
+    not_5d = torch.randn(batch, seq_per_rank, 2, h, head_dim, 1)  # 6D.
+    try:
+        UlyssesCrossAttention._assert_fused_kv_stack_shape(not_5d)
+    except AssertionError as exc:
+        assert "must be 5D" in str(exc), (
+            f"Rank {rank}: expected message naming '5D', got {exc!r}"
+        )
+    else:
+        raise AssertionError(
+            f"Rank {rank}: expected AssertionError for 6D input; none raised"
+        )
+
+    # The correct shape must NOT raise — verifies the guard is tight.
+    good_stack = torch.randn(batch, seq_per_rank, 2, h, head_dim)
+    UlyssesCrossAttention._assert_fused_kv_stack_shape(good_stack)
 
 
 def _logic_ulysses_cross_forwards_key_padding_mask(rank, world_size):
@@ -738,10 +757,31 @@ class TestUlyssesCrossAttentionNegatives:
             test_fn=_logic_ulysses_cross_swapped_dims_negative,
         )
 
+    def test_assert_fused_kv_stack_shape_fires_on_bad_dim2_single_rank(self):
+        """AC-2 negative: the wrapper's guard fires loudly when ``dim=2 != 2``.
+
+        Pure CPU, no spawn needed — the guard is a static method and the
+        test passes a malformed pre-stacked tensor directly.
+        """
+        batch, seq, h, head_dim = 1, 2, 4, 8
+
+        bad_stack = torch.randn(batch, seq, 3, h, head_dim)
+        with pytest.raises(AssertionError, match="dim=2 size 2"):
+            UlyssesCrossAttention._assert_fused_kv_stack_shape(bad_stack)
+
+        not_5d = torch.randn(batch, seq, 2, h, head_dim, 1)
+        with pytest.raises(AssertionError, match="must be 5D"):
+            UlyssesCrossAttention._assert_fused_kv_stack_shape(not_5d)
+
+        # Good stack does not raise.
+        UlyssesCrossAttention._assert_fused_kv_stack_shape(
+            torch.randn(batch, seq, 2, h, head_dim)
+        )
+
     @pytest.mark.parametrize("world_size", [2, 4])
-    def test_a2a_5d_dim2_is_generic_callers_must_guarantee_kv_stack(self, world_size):
-        """AC-2 negative: ``dim=2`` of the fused stack is generic; callers must stack exactly (K, V)."""
+    def test_assert_fused_kv_stack_shape_fires_under_distributed(self, world_size):
+        """AC-2 negative exercised inside spawned workers to mirror the multi-rank AC-2 contract."""
         _run_distributed(
             world_size=world_size,
-            test_fn=_logic_a2a_5d_non_kv_stack_dim_is_generic,
+            test_fn=_logic_assert_fused_kv_stack_shape_fires_on_bad_dim2,
         )

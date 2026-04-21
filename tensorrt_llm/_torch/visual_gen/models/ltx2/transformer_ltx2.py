@@ -1389,7 +1389,10 @@ class LTXModel(nn.Module):
         tail = last.expand(*repeat_shape).contiguous()
         positions = torch.cat([pos, tail], dim=2)
 
-        if audio.timesteps.ndim >= 2 and audio.timesteps.shape[1] == pos.shape[2] - pad:
+        # Per-token timesteps have shape (B, T) where T matches the original
+        # positions seq length (pre-padding). Repeat-last-pad on dim=1 when
+        # that signature is present; scalar (B,) timesteps pass through.
+        if audio.timesteps.ndim >= 2 and audio.timesteps.shape[1] == pos.shape[2]:
             ts = audio.timesteps
             last_ts = ts[:, -1:, ...].expand(
                 ts.shape[0], pad, *ts.shape[2:]
