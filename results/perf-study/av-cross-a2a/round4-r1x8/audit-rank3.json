@@ -1,0 +1,79 @@
+{
+  "ltx2.t2v_cross_attn": [
+    {
+      "all_to_all_kernels": 1,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 0,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 0,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 4,
+      "all_gather_kernels": 0
+    }
+  ],
+  "ltx2.t2a_cross_attn": [
+    {
+      "all_to_all_kernels": 1,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 0,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 0,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0
+    }
+  ],
+  "ltx2.a2v_cross_attn": [
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 2,
+      "all_gather_kernels": 0
+    }
+  ],
+  "ltx2.v2a_cross_attn": [
+    {
+      "all_to_all_kernels": 4,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 3,
+      "all_gather_kernels": 0
+    },
+    {
+      "all_to_all_kernels": 4,
+      "all_gather_kernels": 0
+    }
+  ],
+  "_totals": {
+    "all_to_all_kernels": 34,
+    "all_gather_kernels": 0,
+    "num_ranges": 16
+  }
+}

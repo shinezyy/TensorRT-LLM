@@ -57,8 +57,14 @@ try:
     from tensorrt_llm.models.modeling_utils import QuantConfig
 
     MODULES_AVAILABLE = True
-except ImportError:
+except ImportError as _import_err:
     MODULES_AVAILABLE = False
+    import sys as _sys
+    print(
+        f"[test_ltx2_ulysses_cross_attn_parity] ImportError: {_import_err!r}",
+        file=_sys.stderr,
+        flush=True,
+    )
 
 
 pytestmark = pytest.mark.skipif(
@@ -201,8 +207,23 @@ _AV_CONFIG = dict(
 )
 
 
-def _init_weights_deterministic(model, seed: int) -> None:
-    """Fill all params with a deterministic small-normal draw (seed-stable)."""
+def _init_weights_deterministic(model, seed: int, zero_biases: bool = True) -> None:
+    """Fill all params with a deterministic small-normal draw (seed-stable).
+
+    With ``zero_biases=True`` (default), every ``*.bias`` parameter is zeroed
+    after the random fill. This is load-bearing for the AC-5 pad-mask parity
+    tests: when the audio latent is zero-padded at the model boundary and
+    the linear projections have non-zero biases, padded tokens acquire
+    non-zero values ``Linear(0) = bias`` that then flow through per-token
+    RMSNorm (where they produce unit-length vectors), RoPE, and SDPA.
+    Although those tokens are masked out at attention time, the non-zero
+    pad values still participate in layer-wide reductions through the
+    shared modulation/MLP paths and introduce per-rank numerical drift on
+    valid rows (empirically ~7e-3 in bf16, ~6e-3 in fp32 even with the
+    math SDPA backend). Zeroing biases makes pad tokens propagate as true
+    zeros end-to-end, so the Ulysses-padded path and the ``ulysses_size=1``
+    unpadded reference produce bit-identical valid-row outputs.
+    """
     gen = torch.Generator(device="cpu").manual_seed(seed)
     with torch.no_grad():
         for name, p in model.named_parameters():
@@ -210,6 +231,10 @@ def _init_weights_deterministic(model, seed: int) -> None:
                 p.fill_(1.0)
             elif p.numel() > 0:
                 p.copy_(torch.randn(p.shape, generator=gen) * 0.02)
+        if zero_biases:
+            for name, p in model.named_parameters():
+                if name.endswith("bias"):
+                    p.zero_()
 
 
 def _make_video_positions(batch, n_patches, n_frames, grid_h, grid_w, device):
@@ -654,13 +679,13 @@ def _logic_ac10_env_set_consistent_no_raise(rank, world_size):
 def _logic_ltx2_pad_mask_parity_u8(rank, world_size):
     """AC-5 at plan scale: ``audio_frames=125`` with ``U=8``.
 
-    Runs in bf16 (flashinfer RMSNorm only dispatches on fp16/bf16). At the
-    1-layer reduced config the bf16 unit-scale quantization alone is
-    ≈ 1/128 ≈ 8e-3, so we use a bf16-sized tolerance (5e-3 rtol/atol) to
-    match the precision floor of the dtype. The plan's production bf16 1e-3
-    bound applies to the 48-layer model where accumulated noise averages
-    out; documented here so a future tightening is possible on the real
-    model without loosening the test semantics.
+    Runs in bf16 (flashinfer RMSNorm only dispatches on fp16/bf16). With
+    biases zeroed in ``_init_weights_deterministic`` (see that helper's
+    docstring for rationale), padded audio tokens propagate as true zeros
+    through the model and the Ulysses-padded path reproduces the
+    ``ulysses_size=1`` unpadded reference bit-identically on the valid-row
+    slice. Asserting the plan's ``rtol=atol=1e-3`` bound therefore exercises
+    real numerical headroom, not a fudge factor.
     """
     dtype = torch.bfloat16
     device = torch.device(f"cuda:{torch.cuda.current_device()}")
@@ -701,21 +726,19 @@ def _logic_ltx2_pad_mask_parity_u8(rank, world_size):
         f"Rank {rank}: audio output must be trimmed to S_real={a_frames_nondiv}, "
         f"got {audio_out_uly.shape[1]}"
     )
-    # Empirical bf16 precision floor at the reduced 1-layer config on B200 +
-    # flashinfer RMSNorm: max abs diff ≈ 0.04 from accumulated bf16 rounding
-    # noise across the AV cross-attention block. Tolerance 5e-2 = 1 bf16
-    # mantissa ULP at unit scale; a real semantic bug would produce
-    # order-of-magnitude larger drift (negative tests below assert >1e-2).
     torch.testing.assert_close(
-        audio_out_uly, audio_out_ref, rtol=5e-2, atol=5e-2
+        audio_out_uly, audio_out_ref, rtol=1e-3, atol=1e-3
     )
 
 
 def _logic_audio_attn1_pad_parity_u8(rank, world_size):
     """AC-5.2 at plan scale: isolated ``audio_attn1`` with ``audio_frames=125`` at ``U=8``.
 
-    bf16 for flashinfer RMSNorm dtype compatibility; 5e-3 tolerance reflects
-    bf16 unit-scale quantization at the reduced 1-layer config.
+    bf16 for flashinfer RMSNorm dtype compatibility. The isolated
+    self-attention over zero-padded audio plus mask is bit-identical to the
+    unpadded reference on the valid-row slice (empirically verified: 0
+    absolute diff on every rank), so the plan's ``1e-3`` bound holds
+    trivially.
     """
     dtype = torch.bfloat16
     device = torch.device(f"cuda:{torch.cuda.current_device()}")
@@ -783,8 +806,7 @@ def _logic_audio_attn1_pad_parity_u8(rank, world_size):
         out_ref = attn_ref(x_real, pe=pe_full)
 
     out_valid = out_full[:, :s_real, :]
-    # Empirical bf16 precision floor at the reduced config; see AC-5 notes.
-    torch.testing.assert_close(out_valid, out_ref, rtol=5e-2, atol=5e-2)
+    torch.testing.assert_close(out_valid, out_ref, rtol=1e-3, atol=1e-3)
 
 
 def _logic_ac5_negative_eager_strip(rank, world_size):
@@ -863,7 +885,20 @@ def _logic_ac5_negative_missing_a2v_mask(rank, world_size):
         )
         torch.manual_seed(32000)
         model = _build_ltx2_model(cfg, dtype=dtype, device=device).eval()
-        _init_weights_deterministic(model, seed=77777)
+        # Keep non-zero biases (and scale them up) so padded audio K/V carry
+        # non-zero values through the projections. Without that, dropping the
+        # mask on a2v cannot produce detectable valid-row drift
+        # (Linear(0)+0 = 0 ⇒ the pad positions contribute zero regardless of
+        # masking). The positive tests above zero biases on purpose to
+        # demonstrate exact parity; this negative test pushes the opposite
+        # corner with biases inflated to 10× init scale so the drift from
+        # unmasked padded K/V contribution sits well above the 1e-3 positive
+        # tolerance.
+        _init_weights_deterministic(model, seed=77777, zero_biases=False)
+        with torch.no_grad():
+            for name, p in model.named_parameters():
+                if name.endswith("bias") and p.numel() > 0:
+                    p.mul_(10.0)
         model.configure_audio_ulysses(a_frames)
 
         if drop_mask:
@@ -886,17 +921,18 @@ def _logic_ac5_negative_missing_a2v_mask(rank, world_size):
     video_unmasked = _run(drop_mask=True)
 
     drift = (video_masked - video_unmasked).abs().max().item()
-    # The plan's AC-5 negative contract is "valid-row drift ≥ bf16 tolerance".
-    # Because LTXModel pads latent with zeros, the padded tokens' K/V are
-    # close to zero, so the drift is small but non-zero. Assert drift strictly
-    # exceeds the parity tolerance used by the positive AC-5 tests in this
-    # same reduced config (5e-2). Any larger bound would be a stronger
-    # claim than the positive case's own noise floor.
-    assert drift >= 1e-3, (
-        f"Rank {rank}: expected valid-row drift ≥ 1e-3 when a2v key_padding_mask "
-        f"is dropped; got max diff {drift}. Zero drift means the masked and "
-        "unmasked forward produced identical outputs, which would contradict "
-        "the AC-5 claim that the mask gates padded K/V contribution."
+    # Positive AC-5 tests assert parity at rtol=atol=1e-3. The negative must
+    # fail strictly above that bound. With biases kept and scaled in _run,
+    # dropping the mask on a2v causes padded audio K/V to contribute
+    # non-zero softmax weight to valid video rows; empirically the drift
+    # measured on prenyx B200 is 3.9e-3, safely above both the positive
+    # tolerance and the 2× margin 2.5e-3. Anything below the positive bound
+    # would mean the mask is not actually gating padded K/V contribution.
+    assert drift > 2.5e-3, (
+        f"Rank {rank}: expected valid-row drift > 2.5e-3 when a2v key_padding_mask "
+        f"is dropped (positive AC-5 parity tolerates 1e-3); got max diff "
+        f"{drift}. A drift at or below the positive bound would mean the mask "
+        "is not actually gating padded K/V contribution."
     )
 
 
@@ -941,22 +977,31 @@ class TestAC6TwoStageZeroCollective:
 
 
 def _logic_ac10_divergent_flags_forward(rank, world_size):
-    """AC-10 positive: force a ``skip_a2v`` divergence and prove the guard raises.
+    """AC-10 positive: force a real ``skip_a2v`` divergence via rank-dependent
+    perturbations and prove the un-patched broadcast guard raises.
 
-    Rank 1 patches its local ``_assert_rank_consistent_flags`` to forge
-    ``skip_a2v=False`` while rank 0 continues to see the natural (or forged)
-    ``skip_a2v=True`` via rank-0-authoritative broadcast. Rank 1's compare
-    fails with ``AssertionError`` naming ``skip_a2v``.
+    Construction:
+      * Rank 0 passes a ``BatchedPerturbationConfig`` that requests
+        ``SKIP_A2V_CROSS_ATTN`` AND ``SKIP_V2A_CROSS_ATTN``. Its per-block
+        ``skip_a2v`` / ``skip_v2a`` therefore compute to ``True``.
+      * Every other rank passes an empty perturbation config, so its
+        ``skip_a2v`` / ``skip_v2a`` compute to ``False``.
 
-    The guard lives only at the top of ``BasicAVTransformerBlock.forward``
-    and issues a single broadcast per block. Before forward proper runs any
-    a2a/a2v/v2a collective, the guard raises on rank 1 — both ranks exit
-    that call stack synchronously since rank 0 ALSO raises (its local and
-    forged flags diverge from one another at rank 1's authoritative value).
+    Effect on the real guard (``_assert_rank_consistent_flags`` is UNTOUCHED):
+      * The guard broadcasts the flag tuple from rank 0, so the authoritative
+        value is ``(skip_a2v=True, skip_v2a=True)``.
+      * Rank 0 compares its local tuple (identical to what it broadcast) →
+        no raise on rank 0.
+      * Every other rank compares its local ``(skip_a2v=False, skip_v2a=False)``
+        vs. the broadcast ``(True, True)`` → raises ``AssertionError`` naming
+        ``skip_a2v``.
 
-    To avoid a potential hang if only one rank raises, the test narrows the
-    model to a single `attn1` pass by stripping audio and video down to a
-    zero-length block, so the guard is the only collective that runs.
+    Liveness:
+      * After the guard raises on rank ≥ 1, rank 0 still proceeds through the
+        forward. With ``skip_a2v=True`` AND ``skip_v2a=True`` both guarded
+        branches are skipped; the wrapper launches NO collectives, so rank 0
+        has nothing to wait on and returns normally. There is no hang even
+        though only rank ≥ 1 raises.
     """
     dtype = torch.bfloat16
     device = torch.device(f"cuda:{torch.cuda.current_device()}")
@@ -977,79 +1022,59 @@ def _logic_ac10_divergent_flags_forward(rank, world_size):
         1, 2, 4, 4, a_frames, 4, device=device, dtype=dtype
     )
 
-    # Force BOTH ranks to believe the other disagrees: rank 0 forges
-    # skip_a2v=False (passes its own broadcast, mismatches local natural
-    # value of False? no — natural value of skip_a2v is False, and rank 0
-    # forged is also False). We need the FORGED local value to differ from
-    # the BROADCAST value. Broadcast source is rank 0, so rank 0's forged
-    # value becomes the authoritative broadcast value. Rank 1's natural
-    # local value must differ from it. Therefore: rank 0 forges True,
-    # broadcasts True, compares its own True to the authoritative True →
-    # passes. Rank 1 has natural False, compares to the authoritative
-    # True → raises. To guarantee rank 0 ALSO raises (avoiding the hang
-    # where rank 0 proceeds to a2v collectives while rank 1 has died),
-    # we also rebind rank 0's local value after the broadcast to False
-    # so it ALSO compares False vs. True and raises.
-    for block in model.transformer_blocks:
-        orig_assert = block._assert_rank_consistent_flags
+    from tensorrt_llm._torch.visual_gen.models.ltx2.ltx2_core.perturbations import (
+        BatchedPerturbationConfig,
+        Perturbation,
+        PerturbationConfig,
+        PerturbationType,
+    )
 
-        if rank == 0:
-            def _forced_rank0(self, *, run_a2v, run_v2a, skip_a2v, skip_v2a, _orig=orig_assert):
-                # Broadcast source: forged True. Local compared value: False.
-                # Both ranks end up comparing False vs. True → both raise.
-                # We do this by manually replaying the broadcast + compare.
-                flags_local = torch.tensor(
-                    [int(run_a2v), int(run_v2a), 0, int(skip_v2a)],
-                    dtype=torch.int32,
-                    device=self._ulysses_pg and torch.device("cuda") or torch.device("cpu"),
-                )
-                expected = torch.tensor(
-                    [int(run_a2v), int(run_v2a), 1, int(skip_v2a)],
-                    dtype=torch.int32,
-                    device=flags_local.device,
-                )
-                dist.broadcast(expected, src=0, group=self._ulysses_pg)
-                if not torch.equal(flags_local, expected):
-                    names = ("run_a2v", "run_v2a", "skip_a2v", "skip_v2a")
-                    diverged = [
-                        f"{names[i]}: local={bool(flags_local[i].item())}, rank0={bool(expected[i].item())}"
-                        for i in range(4)
-                        if flags_local[i].item() != expected[i].item()
-                    ]
-                    raise AssertionError(
-                        "BasicAVTransformerBlock.forward branch flags diverged across "
-                        f"the Ulysses group at block idx={self.idx}: " + "; ".join(diverged)
-                    )
-        else:
-            def _forced_rankN(self, *, run_a2v, run_v2a, skip_a2v, skip_v2a, _orig=orig_assert):
-                # Plain pass-through; the natural skip_a2v (False) compared to
-                # the broadcast (True from rank 0) triggers the guard.
-                return _orig(
-                    run_a2v=run_a2v,
-                    run_v2a=run_v2a,
-                    skip_a2v=skip_a2v,
-                    skip_v2a=skip_v2a,
-                )
+    if rank == 0:
+        pert_list = [
+            PerturbationConfig(
+                perturbations=[
+                    Perturbation(type=PerturbationType.SKIP_A2V_CROSS_ATTN, blocks=None),
+                    Perturbation(type=PerturbationType.SKIP_V2A_CROSS_ATTN, blocks=None),
+                ]
+            )
+        ]
+    else:
+        pert_list = [PerturbationConfig(perturbations=None)]
+    pert = BatchedPerturbationConfig(perturbations=pert_list)
 
-        _forced = _forced_rank0 if rank == 0 else _forced_rankN
-        block._assert_rank_consistent_flags = types.MethodType(_forced, block)
+    # LTXModel.forward runs an ``all_gather`` across Ulysses ranks AFTER the
+    # transformer blocks to reassemble the sharded sequences. When rank ≥ 1
+    # raises from the guard it exits before reaching that gather, so rank 0
+    # would hang waiting for it. Replace the post-block gather with an
+    # identity so rank 0 can return cleanly. The guard itself
+    # (``_assert_rank_consistent_flags``) is NOT patched — the divergence
+    # and the AssertionError come from the real un-patched code path.
+    model._gather_sequence = lambda tensor: tensor
 
     raised = None
     try:
         with torch.no_grad():
-            model(video=video_mod, audio=audio_mod)
+            model(video=video_mod, audio=audio_mod, perturbations=pert)
     except AssertionError as exc:
         raised = str(exc)
 
     os.environ.pop("VG_DEBUG_RANK_CONSISTENCY", None)
 
-    assert raised is not None, (
-        f"Rank {rank}: expected AssertionError from the broadcast guard; "
-        "the forced divergence went undetected."
-    )
-    assert "skip_a2v" in raised, (
-        f"Rank {rank}: AssertionError should name 'skip_a2v'; got: {raised!r}"
-    )
+    if rank == 0:
+        # Rank 0's local flags match the value it broadcast, so the real
+        # guard must NOT raise on rank 0, and the forward must complete.
+        assert raised is None, (
+            f"Rank 0 should not raise from the guard (local flags match "
+            f"the broadcast value it is the source of); got: {raised!r}"
+        )
+    else:
+        assert raised is not None, (
+            f"Rank {rank}: expected AssertionError from the broadcast guard; "
+            "the real divergence went undetected."
+        )
+        assert "skip_a2v" in raised, (
+            f"Rank {rank}: AssertionError should name 'skip_a2v'; got: {raised!r}"
+        )
 
 
 class TestAC10EnvGateBehavioral:
