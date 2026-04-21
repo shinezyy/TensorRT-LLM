@@ -32,6 +32,13 @@ class TransformerArgs:
     cross_scale_shift_timestep: torch.Tensor | None
     cross_gate_timestep: torch.Tensor | None
     enabled: bool
+    # Audio token validity mask [B, S_full] bool (True = valid, False = pad).
+    # Populated by LTXModel.forward after audio is padded to a multiple of
+    # ulysses_size. Attached only on the audio TransformerArgs; None on video.
+    # The mask is full-seq and identical on every Ulysses rank (after the
+    # wrapper's K/V all-to-all each rank holds the full K/V seq and applies
+    # the mask locally in SDPA).
+    audio_padding_mask: torch.Tensor | None = None
 
 
 class TransformerArgsPreprocessor:
