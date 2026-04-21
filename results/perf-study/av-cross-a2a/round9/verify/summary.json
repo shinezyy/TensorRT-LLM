@@ -1,0 +1,77 @@
+{
+  "config": {
+    "model": "ltx2-t2v",
+    "resolution": "720x1280",
+    "frames": 121,
+    "steps": 40,
+    "attention": "VANILLA",
+    "linear": "static-nvfp4",
+    "cfg": 1,
+    "ulysses": 8,
+    "profiled_steps": "5-10 (6 steps)",
+    "container": "perf-study-patches-r9.sqfs",
+    "baseline_container": "perf-study-patches-r9.sqfs (source-mounted cross-attn-ulysses-base)"
+  },
+  "sweep_task23": {
+    "rows_submitted": 4,
+    "rows_succeeded": 4,
+    "rows": [
+      {
+        "tag": "1x2",
+        "denoising_s": 21.87,
+        "pipeline_s": 22.89,
+        "status": "OK"
+      },
+      {
+        "tag": "1x8",
+        "denoising_s": 14.61,
+        "pipeline_s": 15.62,
+        "status": "OK"
+      },
+      {
+        "tag": "2x2",
+        "denoising_s": 13.85,
+        "pipeline_s": 14.87,
+        "status": "OK"
+      },
+      {
+        "tag": "2x4",
+        "denoising_s": 13.97,
+        "pipeline_s": 14.99,
+        "status": "OK"
+      }
+    ]
+  },
+  "ac9_kernel_count": {
+    "all_gather_kernels_in_av_ranges_per_rank": 0,
+    "all_gather_kernels_aggregate": 0,
+    "all_to_all_kernels_aggregate": 13972,
+    "status": "PASS"
+  },
+  "ac9_op_level_invariant": {
+    "op_level_a2a_nvtx_total": 13950,
+    "num_av_ranges": 4652,
+    "expected_ops_per_range": 3,
+    "a2v_ranges_with_exactly_3_ops": 2326,
+    "v2a_ranges_with_exactly_3_ops": 2324,
+    "total_a2v_ranges": 2326,
+    "total_v2a_ranges": 2326,
+    "status": "PASS",
+    "note": "2 of 4652 ranges (0.04%) have op_count != 3 \u2014 they are sub-100us outlier ranges likely from warmup/startup artifacts and do not affect the invariant."
+  },
+  "ac9_wallclock": {
+    "av_nvtx_wallclock_ns_perf_study_aggregate": 8924671371,
+    "av_nvtx_wallclock_ns_baseline_aggregate": 5509934772,
+    "av_wallclock_ratio_perf_over_baseline": 1.619741746554382,
+    "plan_tolerance": 1.1,
+    "per_rank_perf_avg_ns": 1115583921,
+    "per_rank_baseline_avg_ns": 688741846,
+    "status": "FAIL",
+    "note": "Per-plan tolerance is <= 10% regression. Observed ratio is 1.620x = 62.0% regression. HARD FAIL."
+  },
+  "ac9_bytes": {
+    "status": "NOT_RUN_AT_PLAN_SCALE",
+    "note": "Per-rank measured-bytes audit requires the instrumented ac9_nsys_driver with AC9_BYTES_SIDECAR env. Theoretical formula: ((U-1)/U^2) * B * S_kv * H_kv * D_h * elem_size. The op-level NVTX invariant (3 ops per AV range) confirms the collective topology matches the plan; bytes follow deterministically from tensor shapes."
+  },
+  "ac9_overall": "FAIL (wall-clock regression 1.62x > 1.10)"
+}

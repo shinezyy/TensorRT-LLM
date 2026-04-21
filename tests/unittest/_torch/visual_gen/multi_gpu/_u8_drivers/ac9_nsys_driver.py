@@ -13,10 +13,13 @@ This is NOT a full LTX2-T2V pipeline run — it constructs a reduced-config
 ``LTXModel`` (1 layer, 8 heads, ``audio_frames=125``) and runs N forward
 passes with Ulysses=8 so nsys captures the full Python NVTX ranges
 ``ltx2.a2v_cross_attn`` / ``ltx2.v2a_cross_attn`` plus the audio/video
-self-attention ranges. The kernel-count and byte audit in
-``tests/unittest/_torch/visual_gen/multi_gpu/_u8_drivers/ac9_audit.py``
-is dimension-independent: 3 AllToAll + 0 AllGather per AV cross-attn
-range is the HARD contract regardless of scale.
+self-attention ranges.
+
+When ``AC9_BYTES_SIDECAR`` is set, the driver also monkey-patches
+``all_to_all_4d`` / ``all_to_all_5d`` to record per-call payload byte
+counts and writes them to ``AC9_BYTES_SIDECAR``-per-rank JSON at exit,
+so ``ac9_audit.py --measured-bytes-sidecar`` can verify the bytes are
+within ±10%% of the plan's theoretical value.
 """
 from __future__ import annotations
 
@@ -37,6 +40,80 @@ sys.path.insert(0, str(_REPO_ROOT))
 sys.path.insert(0, str(_MULTI_GPU_DIR))
 
 
+_BYTES_COUNTERS = {
+    "a2a_q_bytes_per_call": [],
+    "a2a_kv_bytes_per_call": [],
+    "a2a_out_bytes_per_call": [],
+}
+
+
+def _install_bytes_counters():
+    """Patch ``all_to_all_4d`` / ``all_to_all_5d`` to record payload bytes.
+
+    ``UlyssesCrossAttention.forward`` calls them with explicit tensor
+    shapes known at call time; we compute ``elem_size * numel`` before
+    the collective and accumulate per-op. Three NVTX ranges in
+    ``UlyssesCrossAttention.forward`` (``ulysses.cross.a2a.{q,kv,out}``)
+    tell us which op this call is for via a small tracker.
+    """
+    from tensorrt_llm._torch import distributed as _dist_mod
+
+    _orig_4d = _dist_mod.all_to_all_4d
+    _orig_5d = _dist_mod.all_to_all_5d
+
+    # Use the stack of NVTX ranges active on this thread via a small
+    # domain tracker so we can dispatch counters to the right bucket.
+    import threading
+    _active = threading.local()
+    _active.stack = []
+
+    _ORIG_NVTX_PUSH = torch.cuda.nvtx.range_push
+
+    def _push(label):
+        try:
+            if not hasattr(_active, "stack"):
+                _active.stack = []
+            _active.stack.append(label)
+        finally:
+            return _ORIG_NVTX_PUSH(label)
+
+    _ORIG_NVTX_POP = torch.cuda.nvtx.range_pop
+
+    def _pop():
+        try:
+            if hasattr(_active, "stack") and _active.stack:
+                _active.stack.pop()
+        finally:
+            return _ORIG_NVTX_POP()
+
+    torch.cuda.nvtx.range_push = _push
+    torch.cuda.nvtx.range_pop = _pop
+
+    def _wrap_4d(t, *a, **kw):
+        label = _active.stack[-1] if getattr(_active, "stack", None) else ""
+        bytes_ = t.element_size() * t.numel()
+        if label == "ulysses.cross.a2a.q":
+            _BYTES_COUNTERS["a2a_q_bytes_per_call"].append(bytes_)
+        elif label == "ulysses.cross.a2a.out":
+            _BYTES_COUNTERS["a2a_out_bytes_per_call"].append(bytes_)
+        return _orig_4d(t, *a, **kw)
+
+    def _wrap_5d(t, *a, **kw):
+        label = _active.stack[-1] if getattr(_active, "stack", None) else ""
+        bytes_ = t.element_size() * t.numel()
+        if label == "ulysses.cross.a2a.kv":
+            _BYTES_COUNTERS["a2a_kv_bytes_per_call"].append(bytes_)
+        return _orig_5d(t, *a, **kw)
+
+    _dist_mod.all_to_all_4d = _wrap_4d
+    _dist_mod.all_to_all_5d = _wrap_5d
+
+    # Also patch the attribute where ``parallel.py`` imported it:
+    import tensorrt_llm._torch.visual_gen.attention_backend.parallel as _par
+    _par.all_to_all_4d = _wrap_4d
+    _par.all_to_all_5d = _wrap_5d
+
+
 def main(num_iters: int = 3) -> None:
     rank = int(os.environ["SLURM_PROCID"])
     world_size = int(os.environ["SLURM_NTASKS"])
@@ -47,6 +124,9 @@ def main(num_iters: int = 3) -> None:
     local_rank = int(os.environ.get("SLURM_LOCALID", str(rank % torch.cuda.device_count())))
     torch.cuda.set_device(local_rank)
     dist.init_process_group(backend="nccl", rank=rank, world_size=world_size)
+
+    if os.environ.get("AC9_BYTES_SIDECAR"):
+        _install_bytes_counters()
 
     from test_ltx2_ulysses_cross_attn_parity import (
         _AV_CONFIG,
@@ -86,6 +166,21 @@ def main(num_iters: int = 3) -> None:
         torch.cuda.synchronize()
 
     dist.barrier()
+
+    sidecar = os.environ.get("AC9_BYTES_SIDECAR")
+    if sidecar:
+        import json as _json
+        sidecar_path = Path(sidecar).parent / f"{Path(sidecar).stem}_rank{rank}.json"
+        out = {
+            f"{k}_avg": (sum(v) / len(v)) if v else 0
+            for k, v in _BYTES_COUNTERS.items()
+        }
+        out["num_iters_measured"] = num_iters
+        out["per_call_counts"] = {k: len(v) for k, v in _BYTES_COUNTERS.items()}
+        out["a2a_kv_bytes_per_call_samples"] = _BYTES_COUNTERS["a2a_kv_bytes_per_call"]
+        sidecar_path.parent.mkdir(parents=True, exist_ok=True)
+        sidecar_path.write_text(_json.dumps(out, indent=2))
+
     dist.destroy_process_group()
     if rank == 0:
         print(f"AC-9 driver completed {num_iters} iterations at world_size={world_size}.", flush=True)

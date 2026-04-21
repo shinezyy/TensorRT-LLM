@@ -1,0 +1,3 @@
+FAIL range=ltx2.v2a_cross_attn tid=323437413673508 [470200775613887,470200777092563]: op-level a2a NVTX ranges=0 (expected exactly 3: Q / K|V / output).
+FAIL range=ltx2.v2a_cross_attn tid=323437346564640 [470200777039187,470200777092563]: op-level a2a NVTX ranges=0 (expected exactly 3: Q / K|V / output).
+FAIL wall-clock: AV NVTX current/baseline=1.6197 (> 1.1); HARD regression.
