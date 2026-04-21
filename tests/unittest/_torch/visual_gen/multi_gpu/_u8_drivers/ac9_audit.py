@@ -397,55 +397,83 @@ def main():
         if args.theoretical_bytes is not None and per_rank:
             theoretical = summary["_totals"]["theoretical_bytes_per_rank_per_tensor"]
 
-            def _avg_key(keys):
-                vals = []
-                for body in per_rank.values():
-                    for k in keys:
-                        v = body.get(k)
-                        if v is not None:
-                            vals.append(float(v))
-                            break
-                return (sum(vals) / len(vals)) if vals else None
+            def _key_for(body, keys):
+                for k in keys:
+                    v = body.get(k)
+                    if v is not None:
+                        return float(v)
+                return None
 
             # Fused K|V 5D a2a carries 2 tensors stacked on dim=2; the
             # theoretical per-rank value is PER TENSOR (K alone or V
             # alone), so divide the fused measurement by 2 before the
             # comparison. Q and OUT a2a each move a single tensor.
-            kv_fused = _avg_key([
-                "a2a_kv_bytes_communicated_per_call_avg",
-                # Backward-compat: older sidecar may only report local
-                # tensor bytes; still use them if present with a note.
-                "a2a_kv_bytes_per_call_avg",
-            ])
-            q_comm = _avg_key(["a2a_q_bytes_communicated_per_call_avg",
-                               "a2a_q_bytes_per_call_avg"])
-            out_comm = _avg_key(["a2a_out_bytes_communicated_per_call_avg",
-                                 "a2a_out_bytes_per_call_avg"])
+            #
+            # AC-9 is stated per rank, so the pass/fail gate must fire
+            # if ANY rank violates the tolerance. Aggregate means are
+            # kept under ``bytes_aggregate_diagnostic`` for readability
+            # but do not drive ``ok``.
+            per_rank_ratios = {}
+            per_rank_pass = {}
+            aggregate_ratios_accumulator = {"q": [], "kv_fused_per_tensor": [], "out": []}
+            for rank_name, body in per_rank.items():
+                kv_fused = _key_for(body, [
+                    "a2a_kv_bytes_communicated_per_call_avg",
+                    # Backward-compat with older sidecars that only wrote
+                    # local tensor bytes.
+                    "a2a_kv_bytes_per_call_avg",
+                ])
+                q_comm = _key_for(body, [
+                    "a2a_q_bytes_communicated_per_call_avg",
+                    "a2a_q_bytes_per_call_avg",
+                ])
+                out_comm = _key_for(body, [
+                    "a2a_out_bytes_communicated_per_call_avg",
+                    "a2a_out_bytes_per_call_avg",
+                ])
+                ratios = {}
+                for key, val in (
+                    ("q", q_comm),
+                    ("kv_fused_per_tensor",
+                     (kv_fused / 2) if kv_fused is not None else None),
+                    ("out", out_comm),
+                ):
+                    if val is not None:
+                        ratios[key] = val / max(1, theoretical)
+                        aggregate_ratios_accumulator[key].append(ratios[key])
+                per_rank_ratios[rank_name] = ratios
+                kv_ratio = ratios.get("kv_fused_per_tensor")
+                if kv_ratio is not None:
+                    within = abs(kv_ratio - 1.0) <= args.bytes_tolerance
+                    per_rank_pass[rank_name] = within
+                    if not within:
+                        ok = False
+                        print(
+                            f"FAIL bytes rank={rank_name}: measured per-tensor "
+                            f"K|V a2a bytes / theoretical ratio={kv_ratio:.4f} "
+                            f"tolerance ±{args.bytes_tolerance}",
+                            file=sys.stderr,
+                        )
+
+            aggregate_ratios = {
+                k: (sum(v) / len(v)) if v else None
+                for k, v in aggregate_ratios_accumulator.items()
+            }
 
             summary["_totals"]["bytes_theoretical_per_tensor"] = theoretical
-            ratios = {}
-            for key, val in (
-                ("q", q_comm),
-                ("kv_fused_per_tensor",
-                 (kv_fused / 2) if kv_fused is not None else None),
-                ("out", out_comm),
-            ):
-                if val is not None:
-                    ratios[key] = val / max(1, theoretical)
-            summary["_totals"]["bytes_ratio_measured_over_theoretical"] = ratios
-            # Pass/fail based on fused-K|V-per-tensor matching theoretical.
-            kv_ratio = ratios.get("kv_fused_per_tensor")
-            if kv_ratio is not None:
-                within = abs(kv_ratio - 1.0) <= args.bytes_tolerance
-                summary["_totals"]["bytes_within_tolerance"] = within
-                if not within:
-                    ok = False
-                    print(
-                        f"FAIL bytes: measured per-tensor K|V a2a bytes / "
-                        f"theoretical ratio={kv_ratio:.4f} tolerance "
-                        f"±{args.bytes_tolerance}",
-                        file=sys.stderr,
-                    )
+            summary["_totals"]["bytes_ratio_measured_over_theoretical_per_rank"] = per_rank_ratios
+            summary["_totals"]["bytes_within_tolerance_per_rank"] = per_rank_pass
+            summary["_totals"]["bytes_all_ranks_within_tolerance"] = (
+                all(per_rank_pass.values()) if per_rank_pass else None
+            )
+            summary["_totals"]["bytes_aggregate_diagnostic"] = {
+                "ratios_mean_across_ranks": aggregate_ratios,
+                "note": (
+                    "Mean of per-rank ratios; informational only. AC-9 "
+                    "requires every rank to satisfy |ratio - 1| <= "
+                    "bytes_tolerance independently."
+                ),
+            }
 
     # Wall-clock aggregate on AV cross-attn NVTX ranges.
     av_range_names = set(_A2A_NVTX_NAMES)

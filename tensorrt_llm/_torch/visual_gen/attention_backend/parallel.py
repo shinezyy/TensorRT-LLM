@@ -217,6 +217,23 @@ class UlyssesCrossAttention(AttentionBackend):
         self.num_heads = self.sharded_num_heads * self.world_size
         self.num_kv_heads = self.sharded_num_kv_heads * self.world_size
 
+        # Lazy-initialized side stream used by :meth:`forward` to run the
+        # fused K|V 5D all-to-all concurrently with the Q 4D all-to-all.
+        # The two collectives are data-independent (Q comes from the
+        # caller's Q-modality projection, K|V from the KV-modality
+        # projection), so issuing them on different CUDA streams lets
+        # them overlap rather than serialize on the default stream.
+        #
+        # Round 11 per-op audit on the committed Round 9 1x8 trace shows
+        # Q a2a ~216us / KV a2a ~167us per call at U=8; the AV
+        # wall-clock regresses 1.62x vs the pre-change AllGather
+        # baseline on B200 NVLink. Overlapping Q and K|V can recover up
+        # to ``min(t_Q, t_KV) = ~167us`` per range if NVLink has spare
+        # bandwidth between them; see
+        # ``results/perf-study/av-cross-a2a/round9/verify/per-op-wallclock.md``
+        # for the full analysis. Disabled by default on single-GPU.
+        self._kv_side_stream: Optional[torch.cuda.Stream] = None
+
     def forward(
         self,
         q: torch.Tensor,
@@ -242,23 +259,79 @@ class UlyssesCrossAttention(AttentionBackend):
         )
 
         if self.world_size > 1:
-            # Q: scatter heads, gather seq. [B, S_q/U, H, D] -> [B, S_q, H/U, D].
-            with torch.cuda.nvtx.range("ulysses.cross.a2a.q"):
-                q = all_to_all_4d(
-                    q, scatter_dim=2, gather_dim=1, process_group=self.process_group
-                )
-            # Fused K|V 5D a2a. Stack on a new dim of size 2 so both tensors
-            # travel in one collective. Layout:
-            #   [B, S_kv/U, 2, H_kv, D] -> [B, S_kv, 2, H_kv/U, D]
-            kv = torch.stack([k, v], dim=2)
-            self._assert_fused_kv_stack_shape(kv)
-            with torch.cuda.nvtx.range("ulysses.cross.a2a.kv"):
-                kv = all_to_all_5d(
-                    kv, scatter_dim=3, gather_dim=1, process_group=self.process_group
-                )
-            k, v = kv.unbind(dim=2)
-            k = k.contiguous()
-            v = v.contiguous()
+            # Q and K|V all-to-all are data-independent. On the default
+            # stream they serialize; on separate streams they can overlap
+            # on NVLink, saving up to ``min(t_Q, t_KV)`` per range.
+            #
+            # Overlap requires CUDA tensors (gloo/CPU unit tests fall
+            # back to the serial path) and is unsafe under CUDA graph
+            # capture: creating / waiting on a side stream requires
+            # relaxed capture mode that the Ulysses path cannot
+            # guarantee here, and AC-8 captures the whole denoise step
+            # on one stream.
+            overlap_ok = (
+                q.is_cuda
+                and torch.cuda.is_available()
+                and not torch.cuda.is_current_stream_capturing()
+            )
+            if overlap_ok and self._kv_side_stream is None:
+                self._kv_side_stream = torch.cuda.Stream()
+
+            if overlap_ok:
+                main_stream = torch.cuda.current_stream()
+                side_stream = self._kv_side_stream
+                # Side stream must see whatever produced ``k`` / ``v``
+                # (typically a Linear projection on the main stream) and
+                # the source stack allocation.
+                side_stream.wait_stream(main_stream)
+                with torch.cuda.stream(side_stream):
+                    # Fused K|V 5D a2a. Stack on a new dim of size 2 so
+                    # both tensors travel in one collective. Layout:
+                    #   [B, S_kv/U, 2, H_kv, D] -> [B, S_kv, 2, H_kv/U, D]
+                    kv = torch.stack([k, v], dim=2)
+                    self._assert_fused_kv_stack_shape(kv)
+                    with torch.cuda.nvtx.range("ulysses.cross.a2a.kv"):
+                        kv = all_to_all_5d(
+                            kv, scatter_dim=3, gather_dim=1,
+                            process_group=self.process_group,
+                        )
+                    k_new, v_new = kv.unbind(dim=2)
+                    k_new = k_new.contiguous()
+                    v_new = v_new.contiguous()
+
+                # Q runs on the main stream, concurrent with the side
+                # stream's K|V work above. [B, S_q/U, H, D] -> [B, S_q, H/U, D].
+                with torch.cuda.nvtx.range("ulysses.cross.a2a.q"):
+                    q = all_to_all_4d(
+                        q, scatter_dim=2, gather_dim=1,
+                        process_group=self.process_group,
+                    )
+
+                # Main stream must wait for K|V before attention can
+                # consume ``k_new`` / ``v_new``. ``record_stream`` keeps
+                # the memory alive until the main stream finishes with
+                # the tensors.
+                main_stream.wait_stream(side_stream)
+                k_new.record_stream(main_stream)
+                v_new.record_stream(main_stream)
+                k, v = k_new, v_new
+            else:
+                # Serial fallback used under CUDA-graph capture.
+                with torch.cuda.nvtx.range("ulysses.cross.a2a.q"):
+                    q = all_to_all_4d(
+                        q, scatter_dim=2, gather_dim=1,
+                        process_group=self.process_group,
+                    )
+                kv = torch.stack([k, v], dim=2)
+                self._assert_fused_kv_stack_shape(kv)
+                with torch.cuda.nvtx.range("ulysses.cross.a2a.kv"):
+                    kv = all_to_all_5d(
+                        kv, scatter_dim=3, gather_dim=1,
+                        process_group=self.process_group,
+                    )
+                k, v = kv.unbind(dim=2)
+                k = k.contiguous()
+                v = v.contiguous()
 
         if self.inner_backend.preferred_layout == AttentionTensorLayout.HND:
             q = q.transpose(1, 2)

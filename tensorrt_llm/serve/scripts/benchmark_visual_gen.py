@@ -78,6 +78,13 @@ class VisualGenRequestInput:
     negative_prompt: Optional[str] = None
     seed: Optional[int] = None
     extra_body: Optional[dict] = None
+    # Media persistence (video backend). When ``save_media_path`` is set,
+    # ``_do_post`` writes the successful response body to that file
+    # instead of reading-and-discarding it. ``output_format`` is forwarded
+    # to the server in the payload so the saved body matches the desired
+    # container (``avi`` / ``mp4`` / ``auto``).
+    save_media_path: Optional[str] = None
+    output_format: Optional[str] = None
 
 
 def _build_payload_common(request_input: VisualGenRequestInput) -> dict:
@@ -95,6 +102,8 @@ def _build_payload_common(request_input: VisualGenRequestInput) -> dict:
         payload["negative_prompt"] = request_input.negative_prompt
     if request_input.seed is not None:
         payload["seed"] = request_input.seed
+    if request_input.output_format is not None:
+        payload["output_format"] = request_input.output_format
     if request_input.extra_body:
         payload.update(request_input.extra_body)
     return payload
@@ -127,7 +136,19 @@ async def _do_post(
             url=request_input.api_url, json=payload, headers=_get_headers()
         ) as response:
             if response.status == 200:
-                await response.read()
+                if request_input.save_media_path:
+                    # Stream the body to disk so the sweep produces
+                    # playable media (e.g. .avi for LTX2-T2V). The
+                    # server-side file persistence is independent of
+                    # this; we save the bytes that were actually
+                    # returned to the client.
+                    save_path = request_input.save_media_path
+                    os.makedirs(os.path.dirname(save_path) or ".", exist_ok=True)
+                    with open(save_path, "wb") as fh:
+                        async for chunk in response.content.iter_chunked(1 << 20):
+                            fh.write(chunk)
+                else:
+                    await response.read()
                 output.success = True
                 output.e2e_latency = time.perf_counter() - st
             else:
@@ -209,6 +230,8 @@ async def benchmark(
     no_test_input: bool = False,
     request_timeout: float = 6 * 60 * 60,
     num_gpus: int = 1,
+    save_media_dir: Optional[str] = None,
+    media_output_format: Optional[str] = None,
 ) -> dict[str, Any]:
     if backend not in VISUAL_GEN_REQUEST_FUNCS:
         raise ValueError(
@@ -217,7 +240,19 @@ async def benchmark(
 
     request_func = VISUAL_GEN_REQUEST_FUNCS[backend]
 
-    def _make_request_input(prompt: str) -> VisualGenRequestInput:
+    # Resolve the on-disk extension to use for saved media. The server
+    # currently supports ``avi`` (default ext ``.avi``), ``mp4`` (ext
+    # ``.mp4``), and ``auto`` (server picks). We echo the requested
+    # format into the filename extension so external tools can identify
+    # the container without running ``ffprobe``.
+    ext_for_format = {"avi": ".avi", "mp4": ".mp4", "auto": ".bin"}
+    save_ext = ext_for_format.get(media_output_format or "", ".bin")
+    # Image backend bodies are JSON (base64-encoded PNGs); saving the
+    # body as-is would be a JSON file, which is less useful. Keep the
+    # feature video-only for now.
+    save_media_for_backend = backend == "openai-videos"
+
+    def _make_request_input(prompt: str, save_path: Optional[str] = None) -> VisualGenRequestInput:
         return VisualGenRequestInput(
             prompt=prompt,
             api_url=api_url,
@@ -230,6 +265,8 @@ async def benchmark(
             negative_prompt=gen_params.get("negative_prompt"),
             seed=gen_params.get("seed"),
             extra_body=extra_body,
+            save_media_path=save_path,
+            output_format=media_output_format if save_media_for_backend else None,
         )
 
     if not no_test_input:
@@ -274,9 +311,16 @@ async def benchmark(
         timeout=timeout,
         connector=aiohttp.TCPConnector(limit=0, limit_per_host=0, force_close=True),
     ) as session:
+        req_idx = 0
         async for request in get_request(input_requests, request_rate, burstiness):
-            request_input = _make_request_input(request.prompt)
+            save_path: Optional[str] = None
+            if save_media_dir and save_media_for_backend:
+                save_path = os.path.join(
+                    save_media_dir, f"sample_{req_idx:05d}{save_ext}"
+                )
+            request_input = _make_request_input(request.prompt, save_path=save_path)
             tasks.append(asyncio.create_task(limited_request_func(request_input, pbar, session)))
+            req_idx += 1
 
         outputs: list[VisualGenRequestOutput] = await asyncio.gather(*tasks)
 
@@ -385,6 +429,13 @@ def main(args: argparse.Namespace):
 
     gc.disable()
 
+    # Resolve the media save directory. If ``--save-media-dir`` is not
+    # set but ``--save-media`` is, fall back to ``--result-dir`` /
+    # ``media`` so videos land next to the benchmark JSON.
+    save_media_dir: Optional[str] = args.save_media_dir
+    if args.save_media and save_media_dir is None:
+        save_media_dir = os.path.join(args.result_dir or ".", "media")
+
     benchmark_result = asyncio.run(
         benchmark(
             backend=backend,
@@ -401,6 +452,8 @@ def main(args: argparse.Namespace):
             no_test_input=args.no_test_input,
             request_timeout=args.request_timeout,
             num_gpus=num_gpus,
+            save_media_dir=save_media_dir,
+            media_output_format=args.media_output_format,
         )
     )
 
@@ -596,6 +649,27 @@ if __name__ == "__main__":
         help="Comma-separated percentile values (default: '50,90,99').",
     )
     output_group.add_argument(
+        "--save-media",
+        action="store_true",
+        help="Persist each successful /v1/videos/generations response body "
+        "to disk. Without --save-media-dir, files land under "
+        "<result-dir>/media/. Video backend only.",
+    )
+    output_group.add_argument(
+        "--save-media-dir",
+        type=str,
+        default=None,
+        help="Explicit directory for saved media. Implies --save-media.",
+    )
+    output_group.add_argument(
+        "--media-output-format",
+        type=str,
+        default=None,
+        choices=[None, "avi", "mp4", "auto"],
+        help="Value passed to the server's output_format field, and used "
+        "as the saved-file extension. Default: server default.",
+    )
+    output_group.add_argument(
         "--metadata",
         type=str,
         nargs="*",
@@ -612,5 +686,9 @@ if __name__ == "__main__":
 
     if args.prompt is None and args.prompt_file is None:
         parser.error("Either --prompt or --prompt-file must be specified.")
+
+    # --save-media-dir implies --save-media
+    if args.save_media_dir and not args.save_media:
+        args.save_media = True
 
     main(args)
