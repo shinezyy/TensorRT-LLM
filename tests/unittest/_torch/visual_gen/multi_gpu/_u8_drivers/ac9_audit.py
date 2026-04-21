@@ -94,9 +94,36 @@ def _count_in_range(kernels, range_start, range_end, patterns):
     return total
 
 
+def _theoretical_a2a_bytes_per_rank(
+    *, U: int, B: int, S_kv: int, H_kv: int, D_h: int, elem_size: int
+) -> int:
+    """Plan's theoretical a2a byte count per K (or per V) per rank.
+
+    From the plan §AC-9: each rank sends / receives
+    ``((U-1)/U^2) * B * S_kv * H_kv * D_h * elem_size`` bytes per K (and
+    per V) across all peers in one Q a2a / one fused K|V a2a / one
+    output a2a. The audit reports the reference value so a post-hoc
+    byte-aggregation pass can compare recorded NCCL payload bytes to
+    this number at the ±10% tolerance the plan specifies.
+    """
+    return ((U - 1) * B * S_kv * H_kv * D_h * elem_size) // (U * U)
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("sqlite", type=Path)
+    parser.add_argument(
+        "--theoretical-bytes",
+        nargs=6,
+        metavar=("U", "B", "S_kv", "H_kv", "D_h", "elem_size"),
+        type=int,
+        default=None,
+        help=(
+            "If provided, emit the plan's per-rank, per-K (and per-V) "
+            "a2a theoretical byte count under _totals.theoretical_bytes "
+            "for external comparison against measured NCCL payloads."
+        ),
+    )
     args = parser.parse_args()
 
     if not args.sqlite.exists():
@@ -169,6 +196,17 @@ def main():
         "op_level_markers_present": bool(op_ranges),
         "num_ranges": sum(len(v) for v in summary.values()),
     }
+    if args.theoretical_bytes is not None:
+        U, B, S_kv, H_kv, D_h, elem_size = args.theoretical_bytes
+        summary["_totals"]["theoretical_bytes_per_rank_per_tensor"] = (
+            _theoretical_a2a_bytes_per_rank(
+                U=U, B=B, S_kv=S_kv, H_kv=H_kv, D_h=D_h, elem_size=elem_size,
+            )
+        )
+        summary["_totals"]["theoretical_bytes_params"] = {
+            "U": U, "B": B, "S_kv": S_kv, "H_kv": H_kv,
+            "D_h": D_h, "elem_size": elem_size,
+        }
     if total_a2a == 0:
         ok = False
         print(
