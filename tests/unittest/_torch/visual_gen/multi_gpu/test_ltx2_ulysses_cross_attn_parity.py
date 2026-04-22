@@ -1224,3 +1224,197 @@ class TestAC10EnvGateBehavioral:
 
     def test_env_set_divergent_flag_raises_from_broadcast_guard(self):
         _run_distributed(world_size=2, test_fn=_logic_ac10_divergent_flags_forward)
+
+
+# ---------------------------------------------------------------------------
+# Realistic-scale U=1 vs U=2 parity regression gate.
+#
+# Exercises the AV cross-attention path at a shape profile one order of
+# magnitude larger than the small ``_AV_CONFIG`` used by the existing
+# tests: 24 heads x 128 head_dim x 4 blocks x 8x16x16 = 2048 video
+# patches x 96 audio frames x 64 text tokens in bf16. Per-K/V payload at
+# U=2 is ~144 KiB — small enough for CI, large enough that a single-
+# communicator NCCL reorder or a ``record_stream``-less side-stream
+# lifetime bug produces NaN through SDPA rather than finite drift.
+#
+# The forward runs for 20 iterations with a 100 MB allocator-pressure
+# buffer allocated and freed between iterations; this forces the
+# caching allocator to actually reuse any memory freed after the K/V
+# rebind inside the cross-attn forward, which is the condition that
+# flips a latent overlap bug from "lucky correct" to "visibly wrong".
+# ---------------------------------------------------------------------------
+
+
+_REALISTIC_AV_CONFIG = dict(
+    # inner_dim = num_attention_heads * attention_head_dim = 3072.
+    # cross_attention_dim must equal inner_dim (caption_projection target).
+    num_attention_heads=24,
+    attention_head_dim=128,
+    in_channels=16,
+    out_channels=16,
+    num_layers=4,
+    cross_attention_dim=24 * 128,
+    caption_channels=64,
+    norm_eps=1e-6,
+    # Matches v_frames=8, v_h=v_w=16 below.
+    positional_embedding_max_pos=[8, 16, 16],
+    timestep_scale_multiplier=1000,
+    use_middle_indices_grid=True,
+    audio_num_attention_heads=24,
+    audio_attention_head_dim=128,
+    audio_in_channels=16,
+    audio_out_channels=16,
+    # The AV cross-attn operates across the shared inner_dim; must match
+    # cross_attention_dim above.
+    audio_cross_attention_dim=24 * 128,
+    audio_positional_embedding_max_pos=[128],
+    av_ca_timestep_scale_multiplier=1,
+)
+
+
+def _build_realistic_ltx2_model(model_config, dtype, device=None):
+    model = LTXModel(
+        model_type=LTXModelType.AudioVideo,
+        model_config=model_config,
+        **_REALISTIC_AV_CONFIG,
+    )
+    if device is not None:
+        model = model.to(device=device, dtype=dtype)
+    else:
+        model = model.to(dtype=dtype)
+    return model
+
+
+def _build_realistic_av_modalities(
+    batch, v_frames, v_h, v_w, a_frames, text_len, device, dtype
+):
+    v_patches = v_frames * v_h * v_w
+    video = Modality(
+        latent=torch.randn(
+            batch, v_patches, _REALISTIC_AV_CONFIG["in_channels"],
+            device=device, dtype=dtype,
+        ) * 0.02,
+        timesteps=torch.tensor([0.5], device=device),
+        positions=_make_video_positions(batch, v_patches, v_frames, v_h, v_w, device),
+        context=torch.randn(
+            batch, text_len, _REALISTIC_AV_CONFIG["caption_channels"],
+            device=device, dtype=dtype,
+        ) * 0.02,
+    )
+    audio = Modality(
+        latent=torch.randn(
+            batch, a_frames, _REALISTIC_AV_CONFIG["audio_in_channels"],
+            device=device, dtype=dtype,
+        ) * 0.02,
+        timesteps=torch.tensor([0.5], device=device),
+        positions=_make_audio_positions(batch, a_frames, device),
+        context=torch.randn(
+            batch, text_len, _REALISTIC_AV_CONFIG["caption_channels"],
+            device=device, dtype=dtype,
+        ) * 0.02,
+    )
+    return video, audio
+
+
+def _logic_av_cross_attn_parity_realistic_scale(rank, world_size):
+    dtype = torch.bfloat16
+    device = torch.device(f"cuda:{torch.cuda.current_device()}")
+
+    batch = 1
+    # 8 * 16 * 16 = 2048 video patches — realistic aspect ratio, divisible
+    # by every U in {2, 4, 8}.
+    v_frames, v_h, v_w = 8, 16, 16
+    # 96 is divisible by 2, 4, 8 so no pad-mask path is exercised here.
+    a_frames = 96
+    text_len = 64
+
+    n_iter = 20
+    # 100 MB scratch tensor. Allocated + freed between forwards to
+    # amplify caching-allocator reuse pressure on any K/V buffer released
+    # inside cross-attn.
+    pressure_elems = (100 * 1024 * 1024) // 4
+
+    # Ulysses path: real NCCL group at world_size.
+    cfg_uly = _make_model_config_with_pg(
+        ulysses_size=world_size, group=dist.group.WORLD, rank=rank
+    )
+    torch.manual_seed(2002)
+    model_uly = _build_realistic_ltx2_model(cfg_uly, dtype=dtype, device=device).eval()
+    _init_weights_deterministic(model_uly, seed=12345)
+    model_uly.configure_audio_ulysses(a_frames)
+
+    # Reference: fresh U=1 model with identical weights.
+    cfg_ref = _make_model_config_with_pg(ulysses_size=1, group=None, rank=0)
+    torch.manual_seed(2002)
+    model_ref = _build_realistic_ltx2_model(cfg_ref, dtype=dtype, device=device).eval()
+    _init_weights_deterministic(model_ref, seed=12345)
+    model_ref.configure_audio_ulysses(a_frames)
+
+    # Deterministic inputs — identical on every rank.
+    torch.manual_seed(1001)
+    video_mod, audio_mod = _build_realistic_av_modalities(
+        batch, v_frames, v_h, v_w, a_frames, text_len,
+        device=device, dtype=dtype,
+    )
+
+    vx_uly = ax_uly = vx_ref = ax_ref = None
+    for _ in range(n_iter):
+        with torch.no_grad():
+            vx_uly, ax_uly = model_uly(video=video_mod, audio=audio_mod)
+            vx_ref, ax_ref = model_ref(video=video_mod, audio=audio_mod)
+        # Pressure tensor allocated + freed between iterations.
+        pressure = torch.empty(pressure_elems, dtype=torch.float32, device=device)
+        del pressure
+
+    if rank != 0:
+        return
+
+    # On-failure diagnostics. ``.item()`` / ``.tolist()`` are fine here —
+    # this is the test body, not the production assert path.
+    def _describe(tag, t):
+        return (
+            f"{tag}: mean={t.float().mean().item():.6g} "
+            f"std={t.float().std().item():.6g} "
+            f"abs_max={t.abs().float().max().item():.6g} "
+            f"any_nan={bool(torch.isnan(t).any().item())} "
+            f"any_inf={bool(torch.isinf(t).any().item())} "
+            f"first8={t.flatten()[:8].float().tolist()}"
+        )
+
+    finite_vx = torch.isfinite(vx_uly).all().item()
+    finite_ax = torch.isfinite(ax_uly).all().item()
+    if not (finite_vx and finite_ax):
+        print(_describe("vx_uly", vx_uly), flush=True)
+        print(_describe("ax_uly", ax_uly), flush=True)
+    assert finite_vx and finite_ax, (
+        f"rank 0: U={world_size} output has NaN / inf — signature of a "
+        f"stream-order or allocator-lifetime race inside "
+        f"UlyssesCrossAttention. See diagnostics above."
+    )
+
+    std_vx = vx_uly.float().std().item()
+    std_ax = ax_uly.float().std().item()
+    if std_vx <= 1e-4 or std_ax <= 1e-4:
+        print(_describe("vx_uly", vx_uly), flush=True)
+        print(_describe("ax_uly", ax_uly), flush=True)
+    assert std_vx > 1e-4, (
+        f"rank 0: U={world_size} video output is near-constant "
+        f"(std={std_vx:.6g} <= 1e-4) — pure-black signature."
+    )
+    assert std_ax > 1e-4, (
+        f"rank 0: U={world_size} audio output is near-constant "
+        f"(std={std_ax:.6g} <= 1e-4)."
+    )
+
+    torch.testing.assert_close(vx_uly, vx_ref, rtol=1e-2, atol=1e-2)
+    torch.testing.assert_close(ax_uly, ax_ref, rtol=1e-2, atol=1e-2)
+
+
+class TestAVCrossAttnRealisticParity:
+    """Realistic-scale 2-GPU parity regression catching the Round-12 pure-black failure mode (U=1 vs U=2)."""
+
+    def test_av_cross_attn_parity_realistic_scale(self):
+        _run_distributed(
+            world_size=2,
+            test_fn=_logic_av_cross_attn_parity_realistic_scale,
+        )
