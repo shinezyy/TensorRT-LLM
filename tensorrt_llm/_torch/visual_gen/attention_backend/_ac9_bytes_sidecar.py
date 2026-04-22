@@ -33,6 +33,7 @@ from __future__ import annotations
 import atexit
 import json
 import os
+import signal
 import threading
 from pathlib import Path
 from typing import Dict, List, Optional
@@ -45,6 +46,15 @@ import torch
 # this module) a noop.
 _INSTALL_LOCK = threading.Lock()
 _INSTALLED = False
+
+# Write the sidecar every ``_WRITE_EVERY_N_CALLS`` a2a invocations so a
+# worker killed by SIGTERM / SIGKILL before the atexit handler fires
+# still persists its counters. ``trtllm-serve`` ends workers via
+# asynchronous shutdown signals and Python does NOT run atexit on
+# SIGKILL, so atexit alone is insufficient.
+_WRITE_EVERY_N_CALLS = 50
+_CALLS_SINCE_LAST_WRITE = 0
+_WRITE_LOCK = threading.Lock()
 
 # Per-op accumulated bytes. ``_local`` is ``elem_size * numel`` on the
 # calling rank (informational); ``_communicated`` is ``local * (U-1) /
@@ -231,27 +241,104 @@ def install_if_enabled() -> bool:
         # in the reduced driver path). Falling back to per-write
         # computation lets the audit still verify the bound even when
         # ``WORLD_SIZE`` is set only after the module imports.
-        def _wrap_4d(t, *a, **kw):
+        #
+        # ``torch._dynamo.disable(recursive=True)`` prevents torch.compile
+        # from tracing the wrapper. Without it, the serve path (which
+        # compiles every transformer block) traces the a2a call, hits
+        # the list-append side effect on ``_BYTES_COUNTERS``, and
+        # graph-breaks into a recompile on every call site -- the
+        # `` hit config.recompile_limit (128)`` error observed in the
+        # first Round 12 nsys attempt.
+        def _wrap_4d_eager(t, *a, **kw):
             label = _current_label()
             if label == "ulysses.cross.a2a.q":
                 _record("q", t, _resolve_ulysses_size())
+                _maybe_write_sidecar(sidecar_env)
             elif label == "ulysses.cross.a2a.out":
                 _record("out", t, _resolve_ulysses_size())
+                _maybe_write_sidecar(sidecar_env)
             return _orig_4d(t, *a, **kw)
 
-        def _wrap_5d(t, *a, **kw):
+        def _wrap_5d_eager(t, *a, **kw):
             label = _current_label()
             if label == "ulysses.cross.a2a.kv":
                 _record("kv", t, _resolve_ulysses_size())
+                _maybe_write_sidecar(sidecar_env)
             return _orig_5d(t, *a, **kw)
+
+        try:
+            _wrap_4d = torch._dynamo.disable(_wrap_4d_eager, recursive=True)
+            _wrap_5d = torch._dynamo.disable(_wrap_5d_eager, recursive=True)
+        except Exception:
+            # torch._dynamo unavailable (e.g., old torch) -- fall back.
+            _wrap_4d = _wrap_4d_eager
+            _wrap_5d = _wrap_5d_eager
 
         _par.all_to_all_4d = _wrap_4d
         _par.all_to_all_5d = _wrap_5d
 
+        # Atexit covers the clean-shutdown case. Signal handlers cover
+        # the common trtllm-serve worker-lifecycle case where the
+        # master sends SIGTERM for a graceful shutdown. SIGKILL still
+        # loses data, which is why ``_maybe_write_sidecar`` also
+        # flushes every ``_WRITE_EVERY_N_CALLS`` calls.
         atexit.register(_write_sidecar, sidecar_env)
+        _install_signal_handlers(sidecar_env)
 
         _INSTALLED = True
         return True
+
+
+def _maybe_write_sidecar(sidecar_env: str) -> None:
+    """Periodic checkpoint write. Called from the wrapper on every a2a.
+
+    Writes the sidecar once every ``_WRITE_EVERY_N_CALLS`` recorded
+    calls, giving us a complete snapshot even if the worker is killed
+    via SIGKILL before ``atexit`` can fire.
+    """
+    global _CALLS_SINCE_LAST_WRITE
+    with _WRITE_LOCK:
+        _CALLS_SINCE_LAST_WRITE += 1
+        if _CALLS_SINCE_LAST_WRITE >= _WRITE_EVERY_N_CALLS:
+            _CALLS_SINCE_LAST_WRITE = 0
+            _write_sidecar(sidecar_env)
+
+
+def _install_signal_handlers(sidecar_env: str) -> None:
+    """Write the sidecar on SIGTERM / SIGINT then re-raise.
+
+    Python's default atexit does NOT run on signal-delivery-triggered
+    exits. ``trtllm-serve`` sends SIGTERM to workers for graceful
+    shutdown, so without this handler workers lose their recorded
+    counters. The handler chains to the previous handler after
+    writing, so existing shutdown logic continues to run.
+    """
+    for sig in (signal.SIGTERM, signal.SIGINT):
+        try:
+            prev = signal.getsignal(sig)
+        except (OSError, ValueError):
+            continue
+
+        def _handler(signum, frame, _prev=prev, _env=sidecar_env, _sig=sig):
+            try:
+                _write_sidecar(_env)
+            except Exception:
+                pass
+            # Chain to the prior handler so the normal shutdown path
+            # runs. SIG_DFL / SIG_IGN get special-cased.
+            if _prev is signal.SIG_DFL:
+                signal.signal(_sig, signal.SIG_DFL)
+                os.kill(os.getpid(), _sig)
+            elif _prev is signal.SIG_IGN:
+                return
+            elif callable(_prev):
+                _prev(signum, frame)
+
+        try:
+            signal.signal(sig, _handler)
+        except (OSError, ValueError):
+            # Non-main thread or signal not installable -- skip.
+            pass
 
 
 def reset_for_tests() -> None:

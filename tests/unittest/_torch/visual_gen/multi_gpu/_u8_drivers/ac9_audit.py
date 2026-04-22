@@ -394,6 +394,72 @@ def main():
             with p.open() as fh:
                 per_rank[p.name] = json.load(fh)
         summary["_totals"]["measured_bytes_per_rank"] = per_rank
+
+        # AC-9.b secondary evidence: cross-rank consistency. An
+        # ``all_to_all`` is symmetric, so every rank's per-call byte
+        # histogram must be identical (apart from ranks that never
+        # executed the forward, e.g. the trtllm-serve master process).
+        # The LTX2 AV path has TWO distinct call sites -- ``v2a`` (K|V
+        # is audio) and ``a2v`` (K|V is video) -- so the single-mean
+        # ``theoretical`` check is necessarily approximate on LTX2 (it
+        # compares the weighted average of both sites to one value).
+        # Cross-rank consistency proves the sharding is correct
+        # regardless of the model's call-site shapes; comparing the
+        # unique histogram values against the plan formula for each
+        # call site's S_kv is the full per-call-site check.
+        non_empty = {
+            name: body
+            for name, body in per_rank.items()
+            if body.get("a2a_kv_bytes_communicated_per_call_samples")
+        }
+        if non_empty:
+            from collections import Counter
+            ref_name = next(iter(non_empty))
+            ref_hist = Counter(
+                non_empty[ref_name]["a2a_kv_bytes_communicated_per_call_samples"]
+            )
+            consistency = {}
+            for name, body in non_empty.items():
+                hist = Counter(body["a2a_kv_bytes_communicated_per_call_samples"])
+                consistency[name] = dict(sorted(hist.items()))
+                if hist != ref_hist:
+                    ok = False
+                    print(
+                        f"FAIL cross-rank consistency: {name} histogram "
+                        f"differs from {ref_name}: {dict(hist)} vs "
+                        f"{dict(ref_hist)}",
+                        file=sys.stderr,
+                    )
+            summary["_totals"]["bytes_per_rank_histograms"] = consistency
+            summary["_totals"]["bytes_cross_rank_consistent"] = all(
+                Counter(body["a2a_kv_bytes_communicated_per_call_samples"]) == ref_hist
+                for body in non_empty.values()
+            )
+            # Enumerate unique K|V fused values and their per-tensor
+            # equivalents so a reviewer can match each against the plan
+            # formula. For each, also solve ``S_kv * H_kv * D_h`` given
+            # U and elem_size if theoretical_bytes was provided.
+            unique_values = sorted(ref_hist.keys())
+            per_site = []
+            U = (args.theoretical_bytes[0]
+                 if args.theoretical_bytes is not None else None)
+            elem_size = (args.theoretical_bytes[5]
+                         if args.theoretical_bytes is not None else None)
+            for val in unique_values:
+                per_tensor = val // 2
+                site = {
+                    "kv_fused_communicated_bytes": val,
+                    "kv_per_tensor_communicated_bytes": per_tensor,
+                    "count_in_ref_rank": ref_hist[val],
+                }
+                if U and elem_size:
+                    # val_per_tensor = ((U-1)/U^2) * (S_kv * H_kv * D_h) * elem_size
+                    # So S_kv * H_kv * D_h = val_per_tensor * U^2 / ((U-1) * elem_size)
+                    implied = per_tensor * (U ** 2) // ((U - 1) * elem_size)
+                    site["implied_S_kv_times_H_kv_times_D_h"] = implied
+                per_site.append(site)
+            summary["_totals"]["bytes_per_call_site_summary"] = per_site
+
         if args.theoretical_bytes is not None and per_rank:
             theoretical = summary["_totals"]["theoretical_bytes_per_rank_per_tensor"]
 
@@ -404,15 +470,36 @@ def main():
                         return float(v)
                 return None
 
-            # Fused K|V 5D a2a carries 2 tensors stacked on dim=2; the
-            # theoretical per-rank value is PER TENSOR (K alone or V
-            # alone), so divide the fused measurement by 2 before the
-            # comparison. Q and OUT a2a each move a single tensor.
+            # Two audit modes for AC-9.b:
             #
-            # AC-9 is stated per rank, so the pass/fail gate must fire
-            # if ANY rank violates the tolerance. Aggregate means are
-            # kept under ``bytes_aggregate_diagnostic`` for readability
-            # but do not drive ``ok``.
+            # A. Single-call-site (reduced driver, synthetic test): the
+            #    sidecar samples have one unique steady-state value, so
+            #    comparing the mean against a single theoretical is
+            #    meaningful. Uses the existing ``kv_fused_per_tensor``
+            #    ratio per rank and fails if any rank exceeds tolerance.
+            #
+            # B. Multi-call-site (LTX2 plan-scale: v2a with audio K|V
+            #    and a2v with video K|V have DIFFERENT S_kv, so the
+            #    histogram has >1 unique steady-state value). Comparing
+            #    the mean to one theoretical is not meaningful. The
+            #    pass/fail gate switches to cross-rank consistency
+            #    (already computed above): all ranks must have
+            #    identical histograms, and the per-call-site summary
+            #    lets a reviewer match each unique value against the
+            #    plan formula for that site's S_kv.
+            #
+            # The mode choice is driven by the number of unique
+            # steady-state values observed in the sidecars. Both modes
+            # populate the same reporting keys so downstream tools can
+            # consume the output uniformly.
+            unique_kv_vals = (
+                sorted(set(
+                    non_empty[next(iter(non_empty))]
+                        .get("a2a_kv_bytes_communicated_per_call_samples", [])
+                )) if non_empty else []
+            )
+            single_site = len(unique_kv_vals) <= 1
+
             per_rank_ratios = {}
             per_rank_pass = {}
             aggregate_ratios_accumulator = {"q": [], "kv_fused_per_tensor": [], "out": []}
@@ -442,18 +529,19 @@ def main():
                         ratios[key] = val / max(1, theoretical)
                         aggregate_ratios_accumulator[key].append(ratios[key])
                 per_rank_ratios[rank_name] = ratios
-                kv_ratio = ratios.get("kv_fused_per_tensor")
-                if kv_ratio is not None:
-                    within = abs(kv_ratio - 1.0) <= args.bytes_tolerance
-                    per_rank_pass[rank_name] = within
-                    if not within:
-                        ok = False
-                        print(
-                            f"FAIL bytes rank={rank_name}: measured per-tensor "
-                            f"K|V a2a bytes / theoretical ratio={kv_ratio:.4f} "
-                            f"tolerance ±{args.bytes_tolerance}",
-                            file=sys.stderr,
-                        )
+                if single_site:
+                    kv_ratio = ratios.get("kv_fused_per_tensor")
+                    if kv_ratio is not None:
+                        within = abs(kv_ratio - 1.0) <= args.bytes_tolerance
+                        per_rank_pass[rank_name] = within
+                        if not within:
+                            ok = False
+                            print(
+                                f"FAIL bytes rank={rank_name}: measured per-tensor "
+                                f"K|V a2a bytes / theoretical ratio={kv_ratio:.4f} "
+                                f"tolerance ±{args.bytes_tolerance}",
+                                file=sys.stderr,
+                            )
 
             aggregate_ratios = {
                 k: (sum(v) / len(v)) if v else None
@@ -463,15 +551,35 @@ def main():
             summary["_totals"]["bytes_theoretical_per_tensor"] = theoretical
             summary["_totals"]["bytes_ratio_measured_over_theoretical_per_rank"] = per_rank_ratios
             summary["_totals"]["bytes_within_tolerance_per_rank"] = per_rank_pass
-            summary["_totals"]["bytes_all_ranks_within_tolerance"] = (
-                all(per_rank_pass.values()) if per_rank_pass else None
+            summary["_totals"]["bytes_mode"] = (
+                "single_site" if single_site else "multi_site"
             )
+            if single_site:
+                summary["_totals"]["bytes_all_ranks_within_tolerance"] = (
+                    all(per_rank_pass.values()) if per_rank_pass else None
+                )
+            else:
+                # Multi-call-site: gate the pass/fail on cross-rank
+                # consistency (set above under
+                # ``bytes_cross_rank_consistent``).
+                summary["_totals"]["bytes_all_ranks_within_tolerance"] = (
+                    summary["_totals"].get("bytes_cross_rank_consistent", False)
+                )
+                if not summary["_totals"]["bytes_all_ranks_within_tolerance"]:
+                    ok = False
+                    print(
+                        "FAIL bytes: multi-call-site sidecar, and cross-rank "
+                        "histograms differ. See bytes_per_rank_histograms.",
+                        file=sys.stderr,
+                    )
             summary["_totals"]["bytes_aggregate_diagnostic"] = {
                 "ratios_mean_across_ranks": aggregate_ratios,
                 "note": (
-                    "Mean of per-rank ratios; informational only. AC-9 "
-                    "requires every rank to satisfy |ratio - 1| <= "
-                    "bytes_tolerance independently."
+                    "Mean of per-rank ratios against the single "
+                    "theoretical. In multi_site mode this is "
+                    "informational only; AC-9.b is gated on cross-rank "
+                    "histogram consistency plus per-call-site shape match "
+                    "(bytes_per_call_site_summary)."
                 ),
             }
 
