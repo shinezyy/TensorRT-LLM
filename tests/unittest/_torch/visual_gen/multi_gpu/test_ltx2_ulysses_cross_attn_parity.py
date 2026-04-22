@@ -1370,7 +1370,12 @@ def _logic_av_cross_attn_parity_realistic_scale(rank, world_size):
         return
 
     # On-failure diagnostics. ``.item()`` / ``.tolist()`` are fine here —
-    # this is the test body, not the production assert path.
+    # this is the test body, not the production assert path. Every
+    # failure branch (isfinite / std / assert_close) prints all four
+    # rows (Ulysses video, reference video, Ulysses audio, reference
+    # audio) so the failure mode is immediately classifiable as NaN,
+    # constant-zero, or finite drift, and both sides of the comparison
+    # are visible.
     def _describe(tag, t):
         return (
             f"{tag}: mean={t.float().mean().item():.6g} "
@@ -1381,11 +1386,16 @@ def _logic_av_cross_attn_parity_realistic_scale(rank, world_size):
             f"first8={t.flatten()[:8].float().tolist()}"
         )
 
+    def _dump_all_parity_diagnostics():
+        print(_describe("vx_uly", vx_uly), flush=True)
+        print(_describe("vx_ref", vx_ref), flush=True)
+        print(_describe("ax_uly", ax_uly), flush=True)
+        print(_describe("ax_ref", ax_ref), flush=True)
+
     finite_vx = torch.isfinite(vx_uly).all().item()
     finite_ax = torch.isfinite(ax_uly).all().item()
     if not (finite_vx and finite_ax):
-        print(_describe("vx_uly", vx_uly), flush=True)
-        print(_describe("ax_uly", ax_uly), flush=True)
+        _dump_all_parity_diagnostics()
     assert finite_vx and finite_ax, (
         f"rank 0: U={world_size} output has NaN / inf — signature of a "
         f"stream-order or allocator-lifetime race inside "
@@ -1395,8 +1405,7 @@ def _logic_av_cross_attn_parity_realistic_scale(rank, world_size):
     std_vx = vx_uly.float().std().item()
     std_ax = ax_uly.float().std().item()
     if std_vx <= 1e-4 or std_ax <= 1e-4:
-        print(_describe("vx_uly", vx_uly), flush=True)
-        print(_describe("ax_uly", ax_uly), flush=True)
+        _dump_all_parity_diagnostics()
     assert std_vx > 1e-4, (
         f"rank 0: U={world_size} video output is near-constant "
         f"(std={std_vx:.6g} <= 1e-4) — pure-black signature."
@@ -1406,8 +1415,12 @@ def _logic_av_cross_attn_parity_realistic_scale(rank, world_size):
         f"(std={std_ax:.6g} <= 1e-4)."
     )
 
-    torch.testing.assert_close(vx_uly, vx_ref, rtol=1e-2, atol=1e-2)
-    torch.testing.assert_close(ax_uly, ax_ref, rtol=1e-2, atol=1e-2)
+    try:
+        torch.testing.assert_close(vx_uly, vx_ref, rtol=1e-2, atol=1e-2)
+        torch.testing.assert_close(ax_uly, ax_ref, rtol=1e-2, atol=1e-2)
+    except AssertionError:
+        _dump_all_parity_diagnostics()
+        raise
 
 
 class TestAVCrossAttnRealisticParity:
