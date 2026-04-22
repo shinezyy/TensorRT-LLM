@@ -29,6 +29,7 @@ communication volume is ``((U-1)/U^2) * T`` per K/V tensor instead of
 ``((U-1)/U) * T`` for an all-gather — a factor of ``U`` reduction.
 """
 
+import os
 from typing import Optional
 
 import torch
@@ -36,6 +37,18 @@ import torch
 from tensorrt_llm._torch.distributed import all_to_all_4d, all_to_all_5d
 
 from .interface import AttentionBackend, AttentionTensorLayout
+
+
+# Env-gated diagnostic. When ``VG_DEBUG_FINITE_CHECK=1`` is set at
+# import time, the cross-attention forward inserts async
+# ``torch._assert_async(torch.isfinite(...).all())`` checks after each
+# all-to-all collective so a NaN / inf contamination of the Ulysses
+# communication path surfaces at the next stream sync instead of
+# propagating silently through SDPA and VAE decode. The check stays on
+# device (no ``.item()`` / ``.cpu()``) so it does not perturb timing
+# enough to mask stream races; the assertion surfaces at the next
+# device sync.
+_VG_DEBUG_FINITE_CHECK = os.environ.get("VG_DEBUG_FINITE_CHECK", "0") == "1"
 
 
 class UlyssesAttention(AttentionBackend):
@@ -249,6 +262,8 @@ class UlyssesCrossAttention(AttentionBackend):
                     q, scatter_dim=2, gather_dim=1,
                     process_group=self.process_group,
                 )
+            if _VG_DEBUG_FINITE_CHECK:
+                torch._assert_async(torch.isfinite(q).all())
             # Fused K|V 5D a2a. Stack on a new dim of size 2 so both
             # tensors travel in one collective. Layout:
             #   [B, S_kv/U, 2, H_kv, D] -> [B, S_kv, 2, H_kv/U, D].
@@ -262,6 +277,9 @@ class UlyssesCrossAttention(AttentionBackend):
             k, v = kv.unbind(dim=2)
             k = k.contiguous()
             v = v.contiguous()
+            if _VG_DEBUG_FINITE_CHECK:
+                torch._assert_async(torch.isfinite(k).all())
+                torch._assert_async(torch.isfinite(v).all())
 
         if self.inner_backend.preferred_layout == AttentionTensorLayout.HND:
             q = q.transpose(1, 2)
@@ -281,6 +299,8 @@ class UlyssesCrossAttention(AttentionBackend):
                 out = all_to_all_4d(
                     out, scatter_dim=1, gather_dim=2, process_group=self.process_group
                 )
+            if _VG_DEBUG_FINITE_CHECK:
+                torch._assert_async(torch.isfinite(out).all())
 
         return out
 
