@@ -112,3 +112,5 @@ plans/
 
 # MacOSX Files
 .DS_Store
+
+/results/perf-study/av-cross-a2a/round12/avi/
