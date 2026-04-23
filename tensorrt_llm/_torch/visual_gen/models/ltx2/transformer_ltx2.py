@@ -1252,10 +1252,20 @@ class LTXModel(nn.Module):
             if cos.ndim == 4 and cos.shape[2] == seq_len:
                 # Split RoPE: [B, H, S, D] — sequence dim at index 2
                 return (cos[:, :, s:e], sin[:, :, s:e])
-            elif cos.ndim == 3 and cos.shape[1] == seq_len:
+            if cos.ndim == 3 and cos.shape[1] == seq_len:
                 # Interleaved RoPE: [B, S, D] — sequence dim at index 1
                 return (cos[:, s:e], sin[:, s:e])
-            return pe
+            raise ValueError(
+                "positional-embedding sequence axis does not match the "
+                f"transformer input: seq_len={seq_len}, cos.ndim={cos.ndim}, "
+                f"cos.shape={tuple(cos.shape)}, sin.shape={tuple(sin.shape)}. "
+                "Expected split layout [B, H, S, D] with cos.shape[2]==seq_len "
+                "or interleaved layout [B, S, D] with cos.shape[1]==seq_len. "
+                "An unsharded pe would silently desynchronize RoPE across "
+                "Ulysses ranks and corrupt downstream attention; the caller "
+                "must rebuild the positional embedding at the new sequence "
+                "layout before sharding."
+            )
 
         return replace(
             args,

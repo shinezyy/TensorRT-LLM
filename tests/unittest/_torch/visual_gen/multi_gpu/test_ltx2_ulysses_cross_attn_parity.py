@@ -1426,3 +1426,136 @@ class TestAVCrossAttnRealisticParity:
             world_size=2,
             test_fn=_logic_av_cross_attn_parity_realistic_scale,
         )
+
+
+# ---------------------------------------------------------------------------
+# Focused CPU-only negative test for _shard_pe raise-on-mismatch.
+#
+# _shard_pe is a closure inside LTXModel._shard_transformer_args; the method
+# only reads self.ulysses_size, self.ulysses_rank, and seq_len from
+# args.x.shape[1]. We exercise it without a real distributed setup by
+# binding the unbound method to a duck-typed instance carrying exactly those
+# attributes plus whatever `replace(args, ...)` requires from a real
+# TransformerArgs. The positive ndim==4 and ndim==3 paths are already
+# covered end-to-end by the pad-mask and realistic-scale parity tests; this
+# is a dedicated negative gate so the silent fallthrough never reappears.
+# ---------------------------------------------------------------------------
+class TestShardPeRaiseOnMismatch:
+    """Regression gate: _shard_pe must raise ValueError when the positional embedding sequence axis does not match the transformer seq_len."""
+
+    @staticmethod
+    def _build_mismatched_args(seq_len: int, bad_seq_len: int):
+        dtype = torch.float32
+        x = torch.zeros(1, seq_len, 4, dtype=dtype)
+        # bad cos/sin shape: ndim==4 with cos.shape[2] != seq_len.
+        bad_cos = torch.zeros(1, 2, bad_seq_len, 8, dtype=dtype)
+        bad_sin = torch.zeros(1, 2, bad_seq_len, 8, dtype=dtype)
+        positional_embeddings = (bad_cos, bad_sin)
+        good_cos = torch.zeros(1, 2, seq_len, 8, dtype=dtype)
+        good_sin = torch.zeros(1, 2, seq_len, 8, dtype=dtype)
+        cross_positional_embeddings = (good_cos, good_sin)
+        timesteps = torch.zeros(1, seq_len, 1, dtype=dtype)
+        embedded_timestep = torch.zeros(1, 1, 1, dtype=dtype)
+        return dict(
+            x=x,
+            context=torch.zeros(1, 4, 8, dtype=dtype),
+            context_mask=None,
+            timesteps=timesteps,
+            embedded_timestep=embedded_timestep,
+            positional_embeddings=positional_embeddings,
+            cross_positional_embeddings=cross_positional_embeddings,
+            cross_scale_shift_timestep=None,
+            cross_gate_timestep=None,
+            enabled=True,
+            audio_padding_mask=None,
+        )
+
+    def test_shard_pe_raises_on_split_layout_seq_dim_mismatch(self):
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        from tensorrt_llm._torch.visual_gen.models.ltx2.ltx2_core.transformer_args import (
+            TransformerArgs,
+        )
+
+        # Duck-typed stand-in: _shard_transformer_args only reads ulysses_size
+        # and ulysses_rank on self.
+        double = types.SimpleNamespace(ulysses_size=2, ulysses_rank=0)
+
+        seq_len = 16
+        bad_seq_len = 12  # intentionally different from seq_len
+        args = TransformerArgs(**self._build_mismatched_args(seq_len, bad_seq_len))
+
+        with pytest.raises(ValueError, match="sequence axis"):
+            LTXModel._shard_transformer_args(double, args)
+
+    def test_shard_pe_raises_on_ndim_mismatch(self):
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        from tensorrt_llm._torch.visual_gen.models.ltx2.ltx2_core.transformer_args import (
+            TransformerArgs,
+        )
+
+        double = types.SimpleNamespace(ulysses_size=2, ulysses_rank=0)
+        seq_len = 16
+
+        dtype = torch.float32
+        x = torch.zeros(1, seq_len, 4, dtype=dtype)
+        # ndim==2 pe never matches either the split or interleaved branches.
+        bad_cos = torch.zeros(seq_len, 8, dtype=dtype)
+        bad_sin = torch.zeros(seq_len, 8, dtype=dtype)
+        positional_embeddings = (bad_cos, bad_sin)
+        good_cos = torch.zeros(1, 2, seq_len, 8, dtype=dtype)
+        good_sin = torch.zeros(1, 2, seq_len, 8, dtype=dtype)
+        cross_positional_embeddings = (good_cos, good_sin)
+
+        args = TransformerArgs(
+            x=x,
+            context=torch.zeros(1, 4, 8, dtype=dtype),
+            context_mask=None,
+            timesteps=torch.zeros(1, seq_len, 1, dtype=dtype),
+            embedded_timestep=torch.zeros(1, 1, 1, dtype=dtype),
+            positional_embeddings=positional_embeddings,
+            cross_positional_embeddings=cross_positional_embeddings,
+            cross_scale_shift_timestep=None,
+            cross_gate_timestep=None,
+            enabled=True,
+            audio_padding_mask=None,
+        )
+
+        with pytest.raises(ValueError, match="cos.ndim"):
+            LTXModel._shard_transformer_args(double, args)
+
+    def test_shard_pe_valid_split_layout_passes_through(self):
+        """Positive anchor: matching ndim==4 / seq_dim shards without raising."""
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        from tensorrt_llm._torch.visual_gen.models.ltx2.ltx2_core.transformer_args import (
+            TransformerArgs,
+        )
+
+        double = types.SimpleNamespace(ulysses_size=2, ulysses_rank=0)
+        seq_len = 16
+        dtype = torch.float32
+        x = torch.zeros(1, seq_len, 4, dtype=dtype)
+        good_cos = torch.zeros(1, 2, seq_len, 8, dtype=dtype)
+        good_sin = torch.zeros(1, 2, seq_len, 8, dtype=dtype)
+        positional_embeddings = (good_cos, good_sin)
+
+        args = TransformerArgs(
+            x=x,
+            context=torch.zeros(1, 4, 8, dtype=dtype),
+            context_mask=None,
+            timesteps=torch.zeros(1, seq_len, 1, dtype=dtype),
+            embedded_timestep=torch.zeros(1, 1, 1, dtype=dtype),
+            positional_embeddings=positional_embeddings,
+            cross_positional_embeddings=positional_embeddings,
+            cross_scale_shift_timestep=None,
+            cross_gate_timestep=None,
+            enabled=True,
+            audio_padding_mask=None,
+        )
+
+        # Must not raise; must produce sharded cos with seq_dim == seq_len / U.
+        sharded = LTXModel._shard_transformer_args(double, args)
+        sharded_cos, _ = sharded.positional_embeddings
+        assert sharded_cos.shape[2] == seq_len // double.ulysses_size
