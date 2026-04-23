@@ -1328,11 +1328,11 @@ def _logic_av_cross_attn_parity_realistic_scale(rank, world_size):
     a_frames = 96
     text_len = 64
 
-    n_iter = 20
-    # 100 MB scratch tensor. Allocated + freed between forwards to
+    n_iter = 60
+    # 500 MB scratch tensor. Allocated + freed between forwards to
     # amplify caching-allocator reuse pressure on any K/V buffer released
     # inside cross-attn.
-    pressure_elems = (100 * 1024 * 1024) // 4
+    pressure_elems = (500 * 1024 * 1024) // 4
 
     # Ulysses path: real NCCL group at world_size.
     cfg_uly = _make_model_config_with_pg(
