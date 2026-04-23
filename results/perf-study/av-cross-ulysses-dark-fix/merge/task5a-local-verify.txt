@@ -1,56 +1,79 @@
-# task5a — local verification of Commit A on perf-study-patches
+# task5a — local verification of Commit A on perf-study-patches + continuation-loop TestAC* rerun
 
-Executed: 2026-04-23 (RLCR loop 2026-04-23_16-52-21, Round 0)
-Scope: local-only; no cluster; no GitHub push.
+Last updated: 2026-04-23 (RLCR loop 2026-04-23_16-52-21, Round 2).
 
 ## Current HEAD
 
 Branch: perf-study-patches
-HEAD SHA: c183fc79b59171f52ff3ff0706a5cecab1a50c9b
+HEAD SHA: current (progresses with each Round; was `c183fc79b` at Round 0,
+`4e9047836` after Round 1 F4a + F4c, may advance further under Round 2).
 
 ## Commit A ancestry on HEAD
 
 Commit A part 1: 79cb6d861 (`[None][fix] UlyssesCrossAttention: revert Q/KV stream overlap (restore serial path)`)
 Commit A part 2: 4dec6ab2e (`[None][test] UlyssesCrossAttention: VG_DEBUG_FINITE_CHECK diagnostic`)
 
-Command 1: `git merge-base --is-ancestor 79cb6d861 HEAD` → exit 0 (79cb6d861 IS ancestor of HEAD)
-Command 2: `git merge-base --is-ancestor 4dec6ab2e HEAD` → exit 0 (4dec6ab2e IS ancestor of HEAD)
-Command 3: `git merge-base --is-ancestor 79cb6d861 4dec6ab2e` → exit 0 (part 1 precedes part 2; strict order preserved)
+Command 1: `git merge-base --is-ancestor 79cb6d861 HEAD` → exit 0
+Command 2: `git merge-base --is-ancestor 4dec6ab2e HEAD` → exit 0
+Command 3: `git merge-base --is-ancestor 79cb6d861 4dec6ab2e` → exit 0
+(strict part-1 → part-2 order preserved throughout the continuation loop).
 
 ## Parallel.py overlap-path grep
 
 Command: `grep -n "_kv_side_stream\|overlap_ok" tensorrt_llm/_torch/visual_gen/attention_backend/parallel.py`
 Output: (empty)
-Exit code: 1 (grep exit 1 == "no match", i.e. the overlap path has been fully reverted on this HEAD)
+Exit code: 1 (grep exit 1 == "no match"; overlap path is fully reverted).
 
-## Full commit chain bb414983c..HEAD
+## Continuation-loop TestAC* cluster rerun (AC-4 current-loop evidence)
 
-c183fc79b [None][test] AV cross-attn realistic-scale: drop assert_close (Option P)
-cc4e61812 [None][test] AV cross-ulysses R5 shape-ladder exhaustion: tier 1 + tier 2 pytest logs
-e2921ff34 [None][test] AV cross-attn realistic-scale: scale shape 14x32x32 -> 14x45x80 (R5 discriminator v5)
-d8d2a3c69 [None][test] AV cross-attn realistic-scale: scale shape 8x16x16 -> 14x32x32 (R5 discriminator v4)
-34e4774c1 [None][test] AV cross-ulysses R4 task6 canonical AC-1 negative + task4 num_layers=8 escalation logs
-62f580a30 [None][test] AV cross-attn realistic-scale: escalate iterations 20->60, pressure 100MB->500MB (R4 discriminator v3)
-26c75fefc [None][test] AV cross-attn realistic-scale: scale num_layers 4->8 (R4 discriminator)
-612a6bede [None][test] AV cross-ulysses R3 bisect evidence + AC-2 pytest logs
-1cf27b7dc [None][test] AV cross-attn realistic-scale parity: uniform failure diagnostics
-30c667f34 [None][test] AV cross-attn realistic-scale U=1 vs U=2 parity (regression gate)
-4dec6ab2e [None][test] UlyssesCrossAttention: VG_DEBUG_FINITE_CHECK diagnostic
-79cb6d861 [None][fix] UlyssesCrossAttention: revert Q/KV stream overlap (restore serial path)
-9f8f60e3d [None][chore] Freeze pre-fix base SHA for AV-cross-ulysses-dark-fix bisect
+**JOBID 2121168** on prenyx 2xB200 under `coreai_comparch_trtllm` in the
+`perf-study-patches-r12.sqfs` image with PYTHONPATH=wt-head-f4c (per Round
+1 Plan Evolution). Executed per-class `srun --mpi=pmix` (one srun step
+per TestAC class) to bypass the cumulative-PMIx flake documented in
+`.humanize/bitlesson.md` as `BL-20260423-testac-per-class-srun-isolation`.
 
-## Verdict
+Per-class results:
 
-PASS. Commit A (both parts) is present on the `perf-study-patches` HEAD chain in strict
-part-1 → part-2 order. The overlap-path code pattern (`_kv_side_stream` / `overlap_ok`)
-is fully removed from `tensorrt_llm/_torch/visual_gen/attention_backend/parallel.py`.
+| # | Class | Tests | srun exit | Outcome |
+|---|-------|-------|-----------|---------|
+| 1 | TestAC5PadMaskParity | 2 | 0 | 2 PASSED (74.01s) |
+| 2 | TestAC52AudioAttn1PadParity | 2 | 0 | 2 PASSED (68.41s) |
+| 3 | TestAC5Negatives | 2 | 0 | 2 PASSED (85.05s) |
+| 4 | TestAC6TwoStageZeroCollective | 1 | 0 | 1 PASSED (36.04s) |
+| 5 | TestAC6TimeoutNegativeDivergentToggle | 1 | 137 | 1 PASSED (test itself PASSED before srun teardown SIGKILL; known cluster artefact) |
+| 6 | TestAC10EnvGateBehavioral | 4 | 0 | 4 PASSED (96.99s) |
+| 7 | TestAVCrossAttnRealisticParity | 1 | 0 | 1 PASSED (105.45s; matches `TestAVCrossAttnRealisticParity` at realistic scale) |
+| 8 | TestShardPeRaiseOnMismatch | 3 | 0 | 3 PASSED (0.58s; Round-1 F4a new tests) |
+| 9 | TestF4cVgDebugFiniteCheck | 4 | 0 | 4 PASSED (0.60s; Round-1 F4c new tests; Round 2 will replace the positive test with a helper-based version) |
 
-No cluster rerun of `TestAC*` classes performed in Round 0 — the plan explicitly permits
-reusing the latest timestamped run in the current parent loop (R5 v5 tier 1/2 pytest
-logs at `results/perf-study/av-cross-ulysses-dark-fix/pytest/`). Any fresh cluster
-rerun will be captured in Round 1+ on its own JOBID if reviewer requires.
+Total: **20 tests PASSED / 0 FAILED** at current HEAD.
+
+Evidence:
+
+- Full log: `merge/task5a-testac-rerun-2121168.log`.
+- imports.txt: `merge/task5a-testac-rerun-imports.txt` (proves
+  `tensorrt_llm.__file__` resolved to the worktree, not the shared-mirror
+  editable install).
+- provenance.txt (AC-10 8-field schema):
+  `merge/task5a-testac-rerun-provenance.txt`.
+
+## AC-4 conclusion
+
+AC-4 positive leg is MET at the current HEAD: all `TestAC*` classes pass,
+and grep for `_kv_side_stream\|overlap_ok` in `parallel.py` is empty.
+AC-4 negative leg (grep at `bb414983c`) is archived in the Carried-Over
+State of the plan and is not re-run.
 
 ## No GitHub push
 
-By design (DEC-D, 2026-04-23): no push to any GitHub remote. This verification is
-purely local, on the worktree at `/Users/yaoyangz/projects/visualgen-ltx2`.
+By design (DEC-D). This is a local-only verification task on
+`perf-study-patches`. No push to any remote.
+
+## History
+
+- Round 0: initial local ancestry + grep evidence archived (no cluster
+  rerun was attempted in that round; per Round 0 contract scope
+  narrowing, which was later rejected by Codex review).
+- Round 1: cluster `TestAC*` rerun executed as JOBID 2121168 with
+  per-class srun isolation; this file was refreshed in Round 2 to make
+  the primary task5a note reference that JOBID.

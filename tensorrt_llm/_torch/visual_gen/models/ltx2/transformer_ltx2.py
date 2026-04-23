@@ -73,6 +73,24 @@ if TYPE_CHECKING:
 _VG_DEBUG_FINITE_CHECK = os.environ.get("VG_DEBUG_FINITE_CHECK", "0") == "1"
 
 
+def _finite_check_av_cross_attn_output(out: torch.Tensor) -> None:
+    """Env-gated finite check shared by the a2v and v2a cross-attention
+    output call sites.
+
+    Runs ``torch._assert_async(torch.isfinite(out).all())`` iff the
+    module-level ``_VG_DEBUG_FINITE_CHECK`` constant is truthy. No-op
+    otherwise so production keeps zero cost. The assertion stays on
+    device (no ``.item()`` / ``.cpu()``) so it does not perturb stream
+    timing; errors surface at the next sync. Both AV cross-attention
+    call sites route through this helper so any future refactor only
+    needs to change one place, and so a focused unit test can drive
+    the exact production code path by calling this helper with a
+    non-finite tensor.
+    """
+    if _VG_DEBUG_FINITE_CHECK:
+        torch._assert_async(torch.isfinite(out).all())
+
+
 # ---------------------------------------------------------------------------
 # LTX2Attention: TRT-LLM Linear + RMSNorm + attention backend + LTX-2 RoPE
 # ---------------------------------------------------------------------------
@@ -792,8 +810,7 @@ class BasicAVTransformerBlock(nn.Module):
                         a2v_out = a2v_out * perturbations.mask_like(
                             PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx, a2v_out
                         )
-                    if _VG_DEBUG_FINITE_CHECK:
-                        torch._assert_async(torch.isfinite(a2v_out).all())
+                    _finite_check_av_cross_attn_output(a2v_out)
                     vx = vx + a2v_out
 
             if run_v2a and not skip_v2a:
@@ -822,8 +839,7 @@ class BasicAVTransformerBlock(nn.Module):
                         v2a_out = v2a_out * perturbations.mask_like(
                             PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx, v2a_out
                         )
-                    if _VG_DEBUG_FINITE_CHECK:
-                        torch._assert_async(torch.isfinite(v2a_out).all())
+                    _finite_check_av_cross_attn_output(v2a_out)
                     ax = ax + v2a_out
 
         # --- Video FFN ---

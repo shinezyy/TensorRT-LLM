@@ -1593,20 +1593,64 @@ class TestF4cVgDebugFiniteCheck:
             pytest.skip("VG_DEBUG_FINITE_CHECK=1 exported before import")
         assert tmod._VG_DEBUG_FINITE_CHECK is False
 
-    def test_positive_nan_trips_async_assert_when_gate_flipped(self, monkeypatch):
+    def test_positive_nan_via_helper_trips_assert(self, monkeypatch):
+        """With the gate flipped on, the shared production helper that the
+        a2v and v2a callsites route through must raise on a non-finite
+        input. This drives the exact function that the forward path
+        invokes, which is what AC-5 positive coverage requires."""
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
+
+        # Defensive: the helper must exist on the module so that both
+        # call sites can route through one function.
+        assert hasattr(tmod, "_finite_check_av_cross_attn_output"), (
+            "F4c extracts a helper; both a2v_out and v2a_out call it."
+        )
+
+        monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", True)
+
+        # Shape a tensor so it looks like a real cross-attn output
+        # (batch, seq, hidden). The value at [0, 0, 0] is NaN, which is
+        # the exact failure mode F4c is defending against at a2v_out /
+        # v2a_out.
+        bad_a2v_out = torch.zeros(1, 4, 8)
+        bad_a2v_out[0, 0, 0] = float("nan")
+        with pytest.raises(RuntimeError):
+            tmod._finite_check_av_cross_attn_output(bad_a2v_out)
+
+        # A second call with an inf input is likewise rejected -- covers
+        # the isinf branch of the isfinite predicate.
+        bad_v2a_out = torch.zeros(1, 4, 8)
+        bad_v2a_out[0, 2, 5] = float("inf")
+        with pytest.raises(RuntimeError):
+            tmod._finite_check_av_cross_attn_output(bad_v2a_out)
+
+    def test_positive_finite_input_does_not_raise(self, monkeypatch):
+        """With the gate on and a fully-finite input, the helper returns
+        normally. Ensures the NaN injection case above is attributable
+        to the isfinite predicate and not to any other side effect."""
         if not MODULES_AVAILABLE:
             pytest.skip("Required modules not available")
         import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
 
         monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", True)
+        finite_out = torch.randn(1, 4, 8)
+        # Must not raise.
+        tmod._finite_check_av_cross_attn_output(finite_out)
 
-        # On CPU torch._assert_async runs eagerly, so we get a RuntimeError
-        # at call time. On CUDA the assertion surfaces at the next stream
-        # sync, also raising; either way, a non-finite input MUST raise.
-        bad = torch.tensor([float("nan"), 1.0])
-        with pytest.raises(RuntimeError):
-            if tmod._VG_DEBUG_FINITE_CHECK:
-                torch._assert_async(torch.isfinite(bad).all())
+    def test_gate_off_skips_helper_body(self, monkeypatch):
+        """With the gate off, the helper is a no-op even on a non-finite
+        input. Proves the env-gate short-circuits correctly."""
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
+
+        monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", False)
+        bad_out = torch.zeros(1, 4, 8)
+        bad_out[0, 0, 0] = float("nan")
+        # Must NOT raise.
+        tmod._finite_check_av_cross_attn_output(bad_out)
 
     def test_source_contains_asserts_at_a2v_and_v2a_callsites(self):
         if not MODULES_AVAILABLE:
@@ -1615,22 +1659,30 @@ class TestF4cVgDebugFiniteCheck:
         import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
 
         src = inspect.getsource(tmod)
-        # Exact-pattern regression gate: the production forward MUST contain
-        # env-gated finite-check asserts at both cross-attention output
-        # call sites. If a future refactor drops these, this test fails
-        # loudly instead of leaving the diagnostic silently disabled.
-        assert "torch._assert_async(torch.isfinite(a2v_out).all())" in src, (
-            "F4c a2v finite-check assert missing from transformer_ltx2.py"
+        # Exact-pattern regression gate: the production forward MUST route
+        # both cross-attention outputs through the shared helper. If a
+        # future refactor drops either call site, this test fails loudly
+        # instead of leaving the diagnostic silently disabled on one leg.
+        assert "_finite_check_av_cross_attn_output(a2v_out)" in src, (
+            "F4c a2v helper call missing from transformer_ltx2.py"
         )
-        assert "torch._assert_async(torch.isfinite(v2a_out).all())" in src, (
-            "F4c v2a finite-check assert missing from transformer_ltx2.py"
+        assert "_finite_check_av_cross_attn_output(v2a_out)" in src, (
+            "F4c v2a helper call missing from transformer_ltx2.py"
+        )
+        # The helper definition must also be present in the module so that
+        # both call sites route through a single gated check.
+        assert "def _finite_check_av_cross_attn_output(" in src, (
+            "F4c helper definition missing from transformer_ltx2.py"
         )
         assert "if _VG_DEBUG_FINITE_CHECK:" in src, (
             "F4c gate constant missing from transformer_ltx2.py"
         )
 
     def test_spy_noop_when_gate_off_exercise_when_gate_on(self, monkeypatch):
-        """Spy on torch._assert_async: zero calls with the gate off, at least one with the gate on (for a single a2v-style pattern exercise)."""
+        """Spy on torch._assert_async through the production helper: zero
+        calls with the gate off, two calls (one per callsite) with the
+        gate on. Drives the real ``_finite_check_av_cross_attn_output``
+        that the forward routes through, not a replicated pattern."""
         if not MODULES_AVAILABLE:
             pytest.skip("Required modules not available")
         import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
@@ -1644,25 +1696,22 @@ class TestF4cVgDebugFiniteCheck:
 
         monkeypatch.setattr(torch, "_assert_async", _spy)
 
-        # Phase 1: gate off. Mirrors the production conditional exactly so
-        # any future refactor of the gate constant is caught by this test.
+        a2v_out = torch.ones(1, 4, 8)
+        v2a_out = torch.ones(1, 4, 8)
+
+        # Phase 1: gate off. The helper must be a no-op.
         monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", False)
-        a2v_out = torch.ones(2, 4)
-        v2a_out = torch.ones(2, 4)
-        if tmod._VG_DEBUG_FINITE_CHECK:
-            torch._assert_async(torch.isfinite(a2v_out).all())
-        if tmod._VG_DEBUG_FINITE_CHECK:
-            torch._assert_async(torch.isfinite(v2a_out).all())
+        tmod._finite_check_av_cross_attn_output(a2v_out)
+        tmod._finite_check_av_cross_attn_output(v2a_out)
         assert calls == [], f"_assert_async called while gate off: {calls!r}"
 
-        # Phase 2: gate on with finite tensors — assert is invoked twice and
-        # does not raise because inputs are finite.
+        # Phase 2: gate on with finite inputs -- the helper calls
+        # torch._assert_async once per invocation; the assertion does not
+        # raise because inputs are finite.
         monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", True)
-        if tmod._VG_DEBUG_FINITE_CHECK:
-            torch._assert_async(torch.isfinite(a2v_out).all())
-        if tmod._VG_DEBUG_FINITE_CHECK:
-            torch._assert_async(torch.isfinite(v2a_out).all())
+        tmod._finite_check_av_cross_attn_output(a2v_out)
+        tmod._finite_check_av_cross_attn_output(v2a_out)
         assert len(calls) == 2, (
             f"_assert_async call count mismatch after gate flip: "
-            f"expected 2, got {len(calls)}"
+            f"expected 2 (one per helper invocation), got {len(calls)}"
         )
