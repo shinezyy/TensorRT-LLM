@@ -1231,11 +1231,13 @@ class TestAC10EnvGateBehavioral:
 #
 # Exercises the AV cross-attention path at a shape profile one order of
 # magnitude larger than the small ``_AV_CONFIG`` used by the existing
-# tests: 24 heads x 128 head_dim x 8 blocks x 14x32x32 = 14336 video
+# tests: 24 heads x 128 head_dim x 8 blocks x 14x45x80 = 50400 video
 # patches x 96 audio frames x 64 text tokens in bf16. Per-K/V payload at
-# U=2 is ~1 MiB — small enough for 2xB200 iteration, large enough that a
-# single-communicator NCCL reorder or a ``record_stream``-less side-stream
-# lifetime bug produces NaN through SDPA rather than finite drift.
+# U=2 is ~3.5 MiB — still fits on 2xB200, and the larger shape puts
+# measurably more caching-allocator pressure on the K/V rebind path,
+# which is where a single-communicator NCCL reorder or a
+# ``record_stream``-less side-stream lifetime bug would surface as NaN
+# through SDPA rather than finite drift.
 #
 # The forward runs for 60 iterations with a 500 MB allocator-pressure
 # buffer allocated and freed between iterations; this forces the
@@ -1256,8 +1258,8 @@ _REALISTIC_AV_CONFIG = dict(
     cross_attention_dim=24 * 128,
     caption_channels=64,
     norm_eps=1e-6,
-    # Matches v_frames=14, v_h=v_w=32 below.
-    positional_embedding_max_pos=[14, 32, 32],
+    # Matches v_frames=14, v_h=45, v_w=80 below.
+    positional_embedding_max_pos=[14, 45, 80],
     timestep_scale_multiplier=1000,
     use_middle_indices_grid=True,
     audio_num_attention_heads=24,
@@ -1321,9 +1323,9 @@ def _logic_av_cross_attn_parity_realistic_scale(rank, world_size):
     device = torch.device(f"cuda:{torch.cuda.current_device()}")
 
     batch = 1
-    # 14 * 32 * 32 = 14336 video patches — realistic aspect ratio, divisible
-    # by every U in {2, 4, 8}.
-    v_frames, v_h, v_w = 14, 32, 32
+    # 14 * 45 * 80 = 50400 video patches — near-production aspect ratio,
+    # divisible by every U in {2, 4, 8}.
+    v_frames, v_h, v_w = 14, 45, 80
     # 96 is divisible by 2, 4, 8 so no pad-mask path is exercised here.
     a_frames = 96
     text_len = 64
