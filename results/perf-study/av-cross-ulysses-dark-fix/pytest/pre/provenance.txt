@@ -1,0 +1,35 @@
+local_sha: bb414983cc6fc16090f17482c4305f4e0006ac8c  # frozen pre-fix base
+remote_worktree_path: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-pytest-pre
+applied_patchset_source_shas: [30c667f34, 1cf27b7dc, 26c75fefc, 62f580a30, d8d2a3c69, e2921ff34, c183fc79b]
+applied_patchset_filenames: [0001-None-test-AV-cross-attn-realistic-scale-U-1-vs-U-2-p.patch, 0002-None-test-AV-cross-attn-realistic-scale-parity-unifo.patch, 0003-None-test-AV-cross-attn-realistic-scale-scale-num_la.patch, 0004-None-test-AV-cross-attn-realistic-scale-escalate-ite.patch, 0005-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch, 0006-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch, 0007-None-test-AV-cross-attn-realistic-scale-drop-assert_.patch]
+image_tag_and_path: perf-study-patches-r12.sqfs @ /lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r12.sqfs
+jobid: 2121132
+account: coreai_comparch_trtllm
+fairshare_snapshot: |
+  Account                            User  FairShare
+  ------------------------------ ---------- ----------
+          coreai_comparch_trtllm
+          coreai_comparch_trtllm   yaoyangz   0.648422
+
+outcome: EVIDENCE_GAP
+outcome_detail: |
+  pytest exit 0 at bb414983c + 7 test-only patches in the r12 image.
+  The realistic-scale test PASSED at the pre-fix state (bug present,
+  overlap_ok path active per grep output: line 272 `overlap_ok = (...)`,
+  line 277 `if overlap_ok and self._kv_side_stream is None: ...`).
+  Per plan §"AC-2 amended per Option P", the EVIDENCE_GAP fallback is
+  triggered when the pre-fix pytest exits 0 (as here) or exits non-zero
+  via an unrelated cause. AC-2 and AC-8 become CONDITIONAL; the HARD
+  discriminator for AC-3 shifts to the bench chain + the AC-1 canonical
+  negative artifact (R4 JOBID 2119590, documented in
+  results/perf-study/av-cross-ulysses-dark-fix/bisect/v1-verdict.md).
+  This outcome is consistent with the R3/R4/R5 ladder finding: the
+  reachable harness shape (14 x 45 x 80 video patches, 96 audio, 64 text,
+  60 iterations, 500 MB allocator pressure) does NOT reproduce the
+  std-collapse signature at pre-fix state. Ladder exhaustion evidence
+  is archived under results/perf-study/av-cross-ulysses-dark-fix/pytest/
+  (task-pytest-pre-v1 .. v5 logs).
+slowest: |
+  105.18s  TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale (single-call duration)
+pytest_exit: 0
+pytest_summary: 1 passed, 2 warnings in 105.85s (0:01:45)

@@ -1,0 +1,33 @@
+# F4a + F4c regression reruns provenance (AC-5 closure evidence)
+
+## taskF4a regression (at F4a commit SHA aeea2bc57)
+
+local_sha: aeea2bc5767af81256cba8365578f65fdcddca29  # F4a commit (before F4c)
+remote_worktree_path: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4a
+applied_patchset_source_shas: [9f8f60e3d, 79cb6d861, 4dec6ab2e, 30c667f34, 1cf27b7dc, 612a6bede, 26c75fefc, 62f580a30, 34e4774c1, d8d2a3c69, e2921ff34, cc4e61812, c183fc79b, a8b4fa2bf, aeea2bc57]  # 15 patches (HEAD minus F4c)
+applied_patchset_filenames: [0001 ... 0015-None-fix-_shard_pe-raise-on-seq-dim-mismatch-was-sil.patch]
+image_tag_and_path: perf-study-patches-r12.sqfs @ /lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r12.sqfs
+jobid: 2121169
+account: coreai_comparch_trtllm
+fairshare_snapshot: (trtllm 0.647436)
+outcome: ALL TESTS PASSED (8/8 classes, 16/16 tests — TestF4cVgDebugFiniteCheck
+  not run because F4c is not in this commit state; TestShardPeRaiseOnMismatch
+  is present and passes)
+
+## taskF4c regression (at F4c commit SHA 4e9047836 = perf-study-patches HEAD)
+
+local_sha: 4e90478362f3f4d568b0feeb4c99179848c1b633  # F4c commit (and current HEAD)
+remote_worktree_path: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c
+applied_patchset_source_shas: [9f8f60e3d, 79cb6d861, 4dec6ab2e, 30c667f34, 1cf27b7dc, 612a6bede, 26c75fefc, 62f580a30, 34e4774c1, d8d2a3c69, e2921ff34, cc4e61812, c183fc79b, a8b4fa2bf, aeea2bc57, 4e9047836]  # full 16-patch chain
+applied_patchset_filenames: [0001 ... 0016-None-test-transformer_ltx2-VG_DEBUG_FINITE_CHECK-at-.patch]
+image_tag_and_path: perf-study-patches-r12.sqfs @ /lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r12.sqfs
+jobid: 2121170
+account: coreai_comparch_trtllm
+fairshare_snapshot: (trtllm 0.647436)
+outcome: ALL TESTS PASSED (9/9 classes, 20/20 tests, including new F4a + F4c tests)
+
+Both regression reruns confirm no regression of TestAC* under F4a landing
+(JOBID 2121169) and F4c landing (JOBID 2121170). AC-5 closure evidence
+COMPLETE: two separate DCO-signed commits (`aeea2bc57` F4a + `4e9047836`
+F4c) on perf-study-patches with TestAC* + realistic-scale + F4a negative
+tests + F4c four-test coverage all passing on prenyx 2xB200.

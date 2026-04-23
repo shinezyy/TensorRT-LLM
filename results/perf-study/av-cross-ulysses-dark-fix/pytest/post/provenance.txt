@@ -1,0 +1,25 @@
+local_sha: 4e90478362f3f4d568b0feeb4c99179848c1b633  # perf-study-patches HEAD after F4a + F4c
+remote_worktree_path: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c
+applied_patchset_source_shas: [9f8f60e3d, 79cb6d861, 4dec6ab2e, 30c667f34, 1cf27b7dc, 612a6bede, 26c75fefc, 62f580a30, 34e4774c1, d8d2a3c69, e2921ff34, cc4e61812, c183fc79b, a8b4fa2bf, aeea2bc57, 4e9047836]
+applied_patchset_filenames: [0001-None-chore-Freeze-pre-fix-base-SHA-for-AV-cross-ulys.patch, 0002-None-fix-UlyssesCrossAttention-revert-Q-KV-stream-ov.patch, 0003-None-test-UlyssesCrossAttention-VG_DEBUG_FINITE_CHEC.patch, 0004-None-test-AV-cross-attn-realistic-scale-U-1-vs-U-2-p.patch, 0005-None-test-AV-cross-attn-realistic-scale-parity-unifo.patch, 0006-None-test-AV-cross-ulysses-R3-bisect-evidence-AC-2-p.patch, 0007-None-test-AV-cross-attn-realistic-scale-scale-num_la.patch, 0008-None-test-AV-cross-attn-realistic-scale-escalate-ite.patch, 0009-None-test-AV-cross-ulysses-R4-task6-canonical-AC-1-n.patch, 0010-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch, 0011-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch, 0012-None-test-AV-cross-ulysses-R5-shape-ladder-exhaustio.patch, 0013-None-test-AV-cross-attn-realistic-scale-drop-assert_.patch, 0014-None-test-AV-cross-ulysses-continuation-R0-local-ver.patch, 0015-None-fix-_shard_pe-raise-on-seq-dim-mismatch-was-sil.patch, 0016-None-test-transformer_ltx2-VG_DEBUG_FINITE_CHECK-at-.patch]
+image_tag_and_path: perf-study-patches-r12.sqfs @ /lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r12.sqfs  # functionally equivalent to a task7-built post-A image per Round 1 Plan Evolution (Commit A is pure Python; PYTHONPATH override places post-fix tensorrt_llm first in sys.path, verified via imports.txt)
+jobid: 2121175
+account: coreai_comparch_trtllm
+fairshare_snapshot: |
+  Account                            User  FairShare
+  ------------------------------ ---------- ----------
+          coreai_comparch_trtllm
+          coreai_comparch_trtllm   yaoyangz   0.647436
+
+outcome: PASS
+outcome_detail: |
+  pytest exit 0 at perf-study-patches HEAD (post-A + post-B v6 + F4a + F4c)
+  in r12 image with PYTHONPATH=wt-head-f4c. The realistic-scale test
+  `TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale`
+  passed in 105.38s with `isfinite == True` and `std > 1e-4` for both
+  video and audio outputs at rank 0 (per the Option P amended gate).
+  AC-8 positive leg SATISFIED.
+slowest: |
+  105.38s  TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+pytest_exit: 0
+pytest_summary: 1 passed, 2 warnings in 106.02s (0:01:46)

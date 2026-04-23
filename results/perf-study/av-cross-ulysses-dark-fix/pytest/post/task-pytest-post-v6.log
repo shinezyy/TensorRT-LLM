@@ -1,0 +1,48 @@
+=== FairShare snapshot ===
+                       Account       User  FairShare 
+------------------------------ ---------- ---------- 
+        coreai_comparch_trtllm                       
+        coreai_comparch_trtllm   yaoyangz   0.647436 
+=== worktree state (post-fix HEAD = replay of local 4e9047836) ===
+042e3c523 transformer_ltx2: VG_DEBUG_FINITE_CHECK at a2v_out/v2a_out
+d7e5815ca _shard_pe: raise on seq-dim mismatch (was silent return)
+43d61c6f0 AV cross-ulysses continuation R0: local verify Commit A + pytest-pre patchset manifest
+2b973918f AV cross-attn realistic-scale: drop assert_close (Option P)
+cf4434cde AV cross-ulysses R5 shape-ladder exhaustion: tier 1 + tier 2 pytest logs
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tensorrt_llm/__init__.py
+=== grep overlap path (expect empty on post-fix HEAD) ===
+grep empty (OK)
+=== realistic-scale pytest ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+Running 1 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+105.38s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+================== 1 passed, 2 warnings in 106.02s (0:01:46) ===================
+pytest exit: 0

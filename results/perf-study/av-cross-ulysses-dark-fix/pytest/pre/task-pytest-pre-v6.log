@@ -1,0 +1,59 @@
+=== FairShare snapshot at job start ===
+                       Account       User  FairShare 
+------------------------------ ---------- ---------- 
+        coreai_comparch_trtllm                       
+        coreai_comparch_trtllm   yaoyangz   0.648422 
+=== worktree state ===
+9d442078c AV cross-attn realistic-scale: drop assert_close (Option P)
+a0047b14b AV cross-attn realistic-scale: scale shape 14x32x32 -> 14x45x80 (R5 discriminator v5)
+7ce894e1d AV cross-attn realistic-scale: scale shape 8x16x16 -> 14x32x32 (R5 discriminator v4)
+ed60623e2 AV cross-attn realistic-scale: escalate iterations 20->60, pressure 100MB->500MB (R4 discriminator v3)
+0ea23a601 AV cross-attn realistic-scale: scale num_layers 4->8 (R4 discriminator)
+411dc62b2 AV cross-attn realistic-scale parity: uniform failure diagnostics
+1d7942deb AV cross-attn realistic-scale U=1 vs U=2 parity (regression gate)
+bb414983c [None][tool] scripts/verify_video_not_dark.py: AVI MJPEG brightness verifier for AV-cross Ulysses dark-output diagnosis
+25f7b2926 [None][chore] gitignore: Round 12 AV cross-a2a .avi bundle (cluster sweep outputs)
+e5bcf3068 [None][perf] AC-9 HARD bring-up end-to-end: all three criteria PASS on fresh 1x8 (Round 12)
+=== imports.txt (which tensorrt_llm does pytest see?) ===
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-pytest-pre/tensorrt_llm/__init__.py
+=== grep overlap path (pre-fix state - EXPECTED to have overlap_ok / _kv_side_stream) ===
+235:        self._kv_side_stream: Optional[torch.cuda.Stream] = None
+272:            overlap_ok = (
+277:            if overlap_ok and self._kv_side_stream is None:
+278:                self._kv_side_stream = torch.cuda.Stream()
+280:            if overlap_ok:
+282:                side_stream = self._kv_side_stream
+=== pytest ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-pytest-pre/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-pytest-pre/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+Running 1 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+105.18s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+================== 1 passed, 2 warnings in 105.85s (0:01:45) ===================
+pytest exit: 0

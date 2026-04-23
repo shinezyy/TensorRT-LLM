@@ -1,0 +1,286 @@
+=== FairShare snapshot ===
+                       Account       User  FairShare 
+------------------------------ ---------- ---------- 
+        coreai_comparch_trtllm                       
+        coreai_comparch_trtllm   yaoyangz   0.647436 
+=== worktree state (HEAD at F4c) ===
+042e3c523 transformer_ltx2: VG_DEBUG_FINITE_CHECK at a2v_out/v2a_out
+d7e5815ca _shard_pe: raise on seq-dim mismatch (was silent return)
+43d61c6f0 AV cross-ulysses continuation R0: local verify Commit A + pytest-pre patchset manifest
+
+=== TestAC5PadMaskParity ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 2 items
+Running 2 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5PadMaskParity::test_full_model_pad_mask_parity, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5PadMaskParity::test_full_model_pad_mask_parity_audio_frames_125_U_8
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5PadMaskParity::test_full_model_pad_mask_parity PASSED [ 50%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5PadMaskParity::test_full_model_pad_mask_parity_audio_frames_125_U_8 PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+36.81s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5PadMaskParity::test_full_model_pad_mask_parity_audio_frames_125_U_8
+34.77s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5PadMaskParity::test_full_model_pad_mask_parity
+
+(4 durations < 0.005s hidden.  Use -vv to show these durations.)
+=================== 2 passed, 2 warnings in 72.21s (0:01:12) ===================
+--- TestAC5PadMaskParity exit: 0 ---
+
+=== TestAC52AudioAttn1PadParity ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 2 items
+Running 2 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC52AudioAttn1PadParity::test_audio_attn1_pad_parity, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC52AudioAttn1PadParity::test_audio_attn1_pad_parity_audio_frames_125_U_8
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC52AudioAttn1PadParity::test_audio_attn1_pad_parity PASSED [ 50%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC52AudioAttn1PadParity::test_audio_attn1_pad_parity_audio_frames_125_U_8 PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+34.81s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC52AudioAttn1PadParity::test_audio_attn1_pad_parity_audio_frames_125_U_8
+33.40s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC52AudioAttn1PadParity::test_audio_attn1_pad_parity
+
+(4 durations < 0.005s hidden.  Use -vv to show these durations.)
+=================== 2 passed, 2 warnings in 68.80s (0:01:08) ===================
+--- TestAC52AudioAttn1PadParity exit: 0 ---
+
+=== TestAC5Negatives ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 2 items
+Running 2 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5Negatives::test_eager_strip_row_count_mismatch, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5Negatives::test_missing_a2v_mask_drifts_valid_rows
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5Negatives::test_eager_strip_row_count_mismatch PASSED [ 50%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5Negatives::test_missing_a2v_mask_drifts_valid_rows PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+47.22s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5Negatives::test_eager_strip_row_count_mismatch
+37.24s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC5Negatives::test_missing_a2v_mask_drifts_valid_rows
+
+(4 durations < 0.005s hidden.  Use -vv to show these durations.)
+=================== 2 passed, 2 warnings in 85.04s (0:01:25) ===================
+--- TestAC5Negatives exit: 0 ---
+
+=== TestAC6TwoStageZeroCollective ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+Running 1 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC6TwoStageZeroCollective::test_disable_enable_collectives
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC6TwoStageZeroCollective::test_disable_enable_collectives PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+34.96s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC6TwoStageZeroCollective::test_disable_enable_collectives
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+======================== 1 passed, 2 warnings in 35.55s ========================
+--- TestAC6TwoStageZeroCollective exit: 0 ---
+
+=== TestAC6TimeoutNegativeDivergentToggle ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+Running 1 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC6TimeoutNegativeDivergentToggle::test_missing_toggle_surfaces_as_timeout
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC6TimeoutNegativeDivergentToggle::test_missing_toggle_surfaces_as_timeout PASSED [100%]--- TestAC6TimeoutNegativeDivergentToggle exit: 137 ---
+
+=== TestAC10EnvGateBehavioral ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 4 items
+Running 4 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_unset_zero_broadcast, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_use_ulysses_false_zero_broadcast, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_set_consistent_flags_no_raise, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_set_divergent_flag_raises_from_broadcast_guard
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_unset_zero_broadcast PASSED [ 25%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_use_ulysses_false_zero_broadcast PASSED [ 50%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_set_consistent_flags_no_raise PASSED [ 75%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_set_divergent_flag_raises_from_broadcast_guard PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+33.80s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_unset_zero_broadcast
+21.56s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_set_consistent_flags_no_raise
+21.29s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_env_set_divergent_flag_raises_from_broadcast_guard
+20.03s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAC10EnvGateBehavioral::test_use_ulysses_false_zero_broadcast
+
+(8 durations < 0.005s hidden.  Use -vv to show these durations.)
+=================== 4 passed, 2 warnings in 97.28s (0:01:37) ===================
+--- TestAC10EnvGateBehavioral exit: 0 ---
+
+=== TestAVCrossAttnRealisticParity ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+Running 1 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+104.74s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+================== 1 passed, 2 warnings in 105.33s (0:01:45) ===================
+--- TestAVCrossAttnRealisticParity exit: 0 ---
+
+=== TestShardPeRaiseOnMismatch ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 3 items
+Running 3 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestShardPeRaiseOnMismatch::test_shard_pe_raises_on_split_layout_seq_dim_mismatch, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestShardPeRaiseOnMismatch::test_shard_pe_raises_on_ndim_mismatch, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestShardPeRaiseOnMismatch::test_shard_pe_valid_split_layout_passes_through
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestShardPeRaiseOnMismatch::test_shard_pe_raises_on_split_layout_seq_dim_mismatch PASSED [ 33%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestShardPeRaiseOnMismatch::test_shard_pe_raises_on_ndim_mismatch PASSED [ 66%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestShardPeRaiseOnMismatch::test_shard_pe_valid_split_layout_passes_through PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+
+(9 durations < 0.005s hidden.  Use -vv to show these durations.)
+======================== 3 passed, 2 warnings in 0.60s =========================
+--- TestShardPeRaiseOnMismatch exit: 0 ---
+
+=== TestF4cVgDebugFiniteCheck ===
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 4 items
+Running 4 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_default_off_without_env, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_positive_nan_trips_async_assert_when_gate_flipped, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_source_contains_asserts_at_a2v_and_v2a_callsites, _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_spy_noop_when_gate_off_exercise_when_gate_on
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_default_off_without_env PASSED [ 25%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_positive_nan_trips_async_assert_when_gate_flipped PASSED [ 50%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_source_contains_asserts_at_a2v_and_v2a_callsites PASSED [ 75%]
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestF4cVgDebugFiniteCheck::test_spy_noop_when_gate_off_exercise_when_gate_on PASSED [100%]
+
+=============================== warnings summary ===============================
+../../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+../../visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+
+(12 durations < 0.005s hidden.  Use -vv to show these durations.)
+======================== 4 passed, 2 warnings in 0.68s =========================
+--- TestF4cVgDebugFiniteCheck exit: 0 ---
+=== SUMMARY: failed classes = 1 of 9 ===

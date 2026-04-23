@@ -1,0 +1,69 @@
+# task5b — local verification of Commit B v6 (Option P) ancestry on perf-study-patches
+
+Executed: 2026-04-23 (RLCR loop 2026-04-23_16-52-21, Round 1)
+Scope: local-only; no cluster; no GitHub push. Unblocked by task-pytest-pre
+(JOBID 2121132) reaching EVIDENCE_GAP per plan §"AC-2 amended per
+Option P" fallback clause.
+
+## Commit B v6 presence on HEAD chain
+
+Commit B v6 SHA: `c183fc79b59171f52ff3ff0706a5cecab1a50c9b`
+Commit subject: `[None][test] AV cross-attn realistic-scale: drop assert_close (Option P)`
+
+Command: `git merge-base --is-ancestor c183fc79b HEAD` → exit 0 (c183fc79b
+IS an ancestor of current HEAD = 4e9047836; F4a + F4c commits sit on top of
+it in Round 1).
+
+## Strict A → B ancestry
+
+Commit A part 2 SHA: `4dec6ab2e78162098376b4261c24527159537fdf`
+(`[None][test] UlyssesCrossAttention: VG_DEBUG_FINITE_CHECK diagnostic`)
+
+Command: `git merge-base --is-ancestor 4dec6ab2e c183fc79b` → exit 0
+(Commit A part 2 strictly precedes Commit B v6 on the perf-study-patches
+chain; strict A → B order preserved).
+
+## Between-base chain (for completeness)
+
+The 13 commits `bb414983c..c183fc79b` on `perf-study-patches`:
+
+```
+c183fc79b [None][test] AV cross-attn realistic-scale: drop assert_close (Option P)   <-- Commit B v6 HEAD
+cc4e61812 [None][test] AV cross-ulysses R5 shape-ladder exhaustion: tier 1 + tier 2 pytest logs
+e2921ff34 [None][test] AV cross-attn realistic-scale: scale shape 14x32x32 -> 14x45x80 (R5 discriminator v5)
+d8d2a3c69 [None][test] AV cross-attn realistic-scale: scale shape 8x16x16 -> 14x32x32 (R5 discriminator v4)
+34e4774c1 [None][test] AV cross-ulysses R4 task6 canonical AC-1 negative + task4 num_layers=8 escalation logs
+62f580a30 [None][test] AV cross-attn realistic-scale: escalate iterations 20->60, pressure 100MB->500MB (R4 discriminator v3)
+26c75fefc [None][test] AV cross-attn realistic-scale: scale num_layers 4->8 (R4 discriminator)
+612a6bede [None][test] AV cross-ulysses R3 bisect evidence + AC-2 pytest logs
+1cf27b7dc [None][test] AV cross-attn realistic-scale parity: uniform failure diagnostics
+30c667f34 [None][test] AV cross-attn realistic-scale U=1 vs U=2 parity (regression gate)
+4dec6ab2e [None][test] UlyssesCrossAttention: VG_DEBUG_FINITE_CHECK diagnostic    <-- Commit A part 2
+79cb6d861 [None][fix] UlyssesCrossAttention: revert Q/KV stream overlap (restore serial path)   <-- Commit A part 1
+9f8f60e3d [None][chore] Freeze pre-fix base SHA for AV-cross-ulysses-dark-fix bisect
+```
+
+## Dependency-graph gate
+
+Per the plan's dependency graph: `task5b` is blocked on `task5a` AND on
+`task-pytest-pre` reaching FAIL or EVIDENCE_GAP (BLOCKED keeps task5b
+blocked). task5a's local ancestry + grep half was archived in Round 0
+(`task5a-local-verify.txt`); a fresh continuation-loop `TestAC*` cluster
+rerun is in flight (JOBID 2121146 at Round 1, awaiting completion).
+task-pytest-pre reached EVIDENCE_GAP with JOBID 2121132 (pytest exit 0;
+provenance + log archived under `…/pytest/pre/`). The gate is therefore
+satisfied for the ancestry half of task5b; the cluster `TestAC*` evidence
+backs both task5a and task5b upon completion.
+
+## No GitHub push
+
+By design (DEC-D). All verification stays local on `perf-study-patches`.
+
+## Verdict
+
+PASS. Commit B v6 is on the local `perf-study-patches` chain with
+Commit A part 1 (`79cb6d861`) and Commit A part 2 (`4dec6ab2e`)
+preceding it in strict order. The Option-P amendment commit (`c183fc79b`)
+is the subject commit. No conflict or re-ordering. AC-6 file-ownership
+is preserved: B-v6 commit only touches the test file
+`tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py`.

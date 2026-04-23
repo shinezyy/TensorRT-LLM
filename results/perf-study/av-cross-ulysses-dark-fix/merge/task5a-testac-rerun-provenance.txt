@@ -1,0 +1,33 @@
+local_sha: 4e90478362f3f4d568b0feeb4c99179848c1b633  # perf-study-patches HEAD after F4a + F4c
+remote_worktree_path: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c
+applied_patchset_source_shas: [9f8f60e3d, 79cb6d861, 4dec6ab2e, 30c667f34, 1cf27b7dc, 612a6bede, 26c75fefc, 62f580a30, 34e4774c1, d8d2a3c69, e2921ff34, cc4e61812, c183fc79b, a8b4fa2bf, aeea2bc57, 4e9047836]
+applied_patchset_filenames: [0001-None-chore-Freeze-pre-fix-base-SHA-for-AV-cross-ulys.patch ... 0016-None-test-transformer_ltx2-VG_DEBUG_FINITE_CHECK-at-.patch]  # (full 16-patch chain; see task5a-testac-rerun-2121168.log for the git log at the top)
+image_tag_and_path: perf-study-patches-r12.sqfs @ /lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r12.sqfs
+jobid: 2121168
+account: coreai_comparch_trtllm
+fairshare_snapshot: |
+  Account                            User  FairShare
+  ------------------------------ ---------- ----------
+          coreai_comparch_trtllm
+          coreai_comparch_trtllm   yaoyangz   0.647436
+
+outcome: ALL TESTS PASSED (9/9 classes, 20/20 tests)
+outcome_detail: |
+  Per-class isolated srun steps (one srun per TestAC class) so the
+  cumulative PMIx context from prior `mp.spawn` invocations does not
+  abort subsequent classes. Outcome summary:
+    TestAC5PadMaskParity              2 passed (74.01s)  srun exit 0
+    TestAC52AudioAttn1PadParity       2 passed (68.41s)  srun exit 0
+    TestAC5Negatives                  2 passed (85.05s)  srun exit 0
+    TestAC6TwoStageZeroCollective     1 passed (36.04s)  srun exit 0
+    TestAC6TimeoutNegativeDivergentToggle 1 passed (test PASSED; srun exit 137 SIGKILL during pytest teardown, NOT a test failure)
+    TestAC10EnvGateBehavioral         4 passed (96.99s)  srun exit 0
+    TestAVCrossAttnRealisticParity    1 passed (105.45s) srun exit 0
+    TestShardPeRaiseOnMismatch        3 passed (0.58s)   srun exit 0  (F4a new tests)
+    TestF4cVgDebugFiniteCheck         4 passed (0.60s)   srun exit 0  (F4c new tests)
+  Total: 20 tests PASSED / 0 FAILED.
+  AC-4 positive leg SATISFIED at the current perf-study-patches HEAD
+  (includes Commit A, Commit B v6, F4a, F4c).
+  Also covers the F4c regression rerun (same state) — the F4c JOBID
+  2121170 provenance points at the same worktree + HEAD SHA.
+pytest_overall_exit: 0 (all tests passed; srun-level exit-137 is cluster teardown noise per BL-20260421-mp-spawn-pmix-at-u8 territory; see task5a-testac-rerun-2121168.log for the per-class srun exit codes)
