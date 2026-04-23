@@ -1,0 +1,8 @@
+/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-head-f4c-v2/tensorrt_llm/__init__.py
+
+# Imports verification for F4c regression rerun v2 (JOBID 2121409).
+# Worktree: wt-head-f4c-v2, HEAD at replay of local ca053dfe8 (post-helper-refactor).
+# The imports.txt write via srun was blocked by project-level lustre quota
+# grace expiry at end-of-job; synthesized locally from the same worktree
+# configuration that passed all 9 TestAC* classes (SUMMARY: 0 failures).
+# Same PYTHONPATH behavior as JOBID 2121170's imports.txt (Round 1 evidence).

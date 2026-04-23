@@ -1,0 +1,40 @@
+local_sha: c183fc79b59171f52ff3ff0706a5cecab1a50c9b  # base branch before-continue-av-cross-fix HEAD = post-A + post-B v6 (no F4a/F4c)
+remote_worktree_path: /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-post-a-b-v6
+applied_patchset_source_shas: [bb414983c, 9f8f60e3d, 79cb6d861, 30c667f34, 1cf27b7dc, 612a6bede, 26c75fefc, 62f580a30, 34e4774c1, d8d2a3c69, e2921ff34, cc4e61812, c183fc79b]
+applied_patchset_filenames: [bb414983c tool: scripts/verify_video_not_dark.py, 9f8f60e3d chore: Freeze pre-fix base SHA, 79cb6d861 fix: UlyssesCrossAttention revert Q/KV stream overlap (= Commit A), 30c667f34..c183fc79b: post-B v6 test-side patches only; NO F4a/F4c]
+image_tag_and_path: perf-study-patches-4dec6ab2e combined-overlay in pyxis cache "av-post-a-combined-2121874" on prenyx0079 @ /opt/tensorrt-llm-post-a/ (sourced from /lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r12.sqfs + overlay copy of wt-build-post-a); import resolves to /opt/tensorrt-llm-post-a/tensorrt_llm/__init__.py when PYTHONPATH is unset (verified in STEP 1), and overridden by PYTHONPATH=wt-post-a-b-v6 for the task8 run.
+jobid: 2121874
+account: coreai_comparch_trtllm
+fairshare_snapshot: |
+  Account                            User  FairShare
+  ------------------------------ ---------- ----------
+          coreai_comparch_trtllm
+          coreai_comparch_trtllm   yaoyangz   0.733728
+
+outcome: POST-FIX VIDEO CORRECT (verifier PASS)
+outcome_detail: |
+  Combined sbatch JOBID 2121874 (av-post-a-combined) on prenyx0079 2xB200.
+  STEP 1 overlay: /opt/tensorrt-llm-post-a populated from wt-build-post-a
+  (post-Commit-A source), /usr/local/lib/python3.12/dist-packages/aa-post-a-override.pth
+  redirect written, import resolves to /opt in container (verified); grep
+  for `_kv_side_stream\|overlap_ok` empty in /opt/.../parallel.py.
+  STEP 3 task8 T-SWEEP-POST: PYTHONPATH=wt-post-a-b-v6, visual_gen_ltx2.py
+  at VANILLA attention, cfg_size=1, ulysses_size=2, height=704 width=1280
+  num_frames=121 steps=40 seed=42 prompt="A close-up of a hand turning a
+  dark metal wheel with intricate gears, slowly and deliberately."
+  Denoising 40/40 completed in 27.80s (0.70s/step), decode 1.42s, total
+  pipeline 29.38s, generation 31.60s. Saved .avi (5.2 MB, 1280x704).
+  visual_gen_ltx2.py exit 137 occurred AFTER "Saved video to ..." during
+  DiffusionClient worker shutdown (SIGTERM on worker 1730960) -- the .avi
+  is fully finalized on disk before the shutdown signal, independently
+  verified by verifier.
+  `scripts/verify_video_not_dark.py` at defaults (dark_mean_max=5.0,
+  flat_std_max=1.0): mean=51.68, std=56.951, max=214.0 -> PASS (exit 0).
+  AC-3 positive leg SATISFIED.
+pipeline_time_s: 29.38
+generation_time_s: 31.60
+avi_size_mb: 5.2
+verifier_mean: 51.68
+verifier_std: 56.951
+verifier_max: 214.0
+verifier_exit: 0 (PASS, correct non-dark video)

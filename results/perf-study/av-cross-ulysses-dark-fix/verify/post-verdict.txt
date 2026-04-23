@@ -1,0 +1,6 @@
+$ python3 scripts/verify_video_not_dark.py results/bench-visual-gen/t-sweep-post-2121874/output.avi
+PASS results/bench-visual-gen/t-sweep-post-2121874/output.avi size=1280x704 mean=51.68 std=56.951 max=214.0 thresholds(dark_mean<=5.0, flat_std<=1.0)
+
+# Round 2 POST verifier output (task-verify-post).
+# Exit code 0 => PASS => AC-9 SATISFIED for the post-fix bench at JOBID 2121874.
+# Fetched .avi: /tmp/r2-evidence/post-a-combined-2121874/output.avi, 5.2 MB.
