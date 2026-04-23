@@ -1,0 +1,254 @@
+HEAD: bb414983c [None][tool] scripts/verify_video_not_dark.py: AVI MJPEG brightness verifier for AV-cross Ulysses dark-output diagnosis
+parallel.py overlap_ok state:
+274:            overlap_ok = False  # V1-bisect-patch: was (q.is_cuda and torch.cuda.is_available() and not torch.cuda.is_current_stream_capturing())
+=== Running visual_gen_ltx2.py ===
+Skipping import of cpp extensions due to incompatible torch version 2.11.0a0+eb65b36914.nv26.02 for torchao version 0.15.0             Please see https://github.com/pytorch/ao/issues/2919 for more info
+/usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+  _warnings.warn(
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tensorrt_llm/serve/openai_protocol.py:108: UserWarning: Field name "schema" in "ResponseFormat" shadows an attribute in parent "OpenAIBaseModel"
+  class ResponseFormat(OpenAIBaseModel):
+[04/22/2026-10:32:16] [TRT-LLM] [I] Initializing VisualGen (LTX2): cfg_size=1, ulysses_size=2
+[04/22/2026-10:32:16] [TRT-LLM] [I] DiffusionClient: Background thread started
+[04/22/2026-10:32:16] [TRT-LLM] [I] DiffusionClient: Initializing IPC
+[04/22/2026-10:32:16] [TRT-LLM] [I] DiffusionClient: Launching 2 workers
+[04/22/2026-10:32:16] [TRT-LLM] [I] DiffusionClient: IPC ready
+[04/22/2026-10:32:16] [TRT-LLM] [I] DiffusionClient: Waiting for workers
+Skipping import of cpp extensions due to incompatible torch version 2.11.0a0+eb65b36914.nv26.02 for torchao version 0.15.0             Please see https://github.com/pytorch/ao/issues/2919 for more info
+Skipping import of cpp extensions due to incompatible torch version 2.11.0a0+eb65b36914.nv26.02 for torchao version 0.15.0             Please see https://github.com/pytorch/ao/issues/2919 for more info
+/usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+  _warnings.warn(
+/usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+  _warnings.warn(
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tensorrt_llm/serve/openai_protocol.py:108: UserWarning: Field name "schema" in "ResponseFormat" shadows an attribute in parent "OpenAIBaseModel"
+  class ResponseFormat(OpenAIBaseModel):
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tensorrt_llm/serve/openai_protocol.py:108: UserWarning: Field name "schema" in "ResponseFormat" shadows an attribute in parent "OpenAIBaseModel"
+  class ResponseFormat(OpenAIBaseModel):
+[04/22/2026-10:32:34] [TRT-LLM] [I] Worker 1: Loading pipeline
+[04/22/2026-10:32:34] [TRT-LLM] [I] Worker 0: Connecting to request queue
+[04/22/2026-10:32:34] [TRT-LLM] [I] Loading config from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08
+[04/22/2026-10:32:34] [TRT-LLM] [I] Worker 0: Connecting to response queue
+[04/22/2026-10:32:34] [TRT-LLM] [I] Worker 0: Loading pipeline
+[04/22/2026-10:32:34] [TRT-LLM] [I] Loading config from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08
+[04/22/2026-10:32:34] [TRT-LLM] [I] Quantization: NVFP4
+[04/22/2026-10:32:34] [TRT-LLM] [I] Dynamic weight quant: False
+[04/22/2026-10:32:34] [TRT-LLM] [I] Quantization: NVFP4
+[04/22/2026-10:32:34] [TRT-LLM] [I] Dynamic weight quant: False
+[04/22/2026-10:32:34] [TRT-LLM] [I] Creating pipeline with MetaInitMode
+[04/22/2026-10:32:34] [TRT-LLM] [I] Creating pipeline with MetaInitMode
+[04/22/2026-10:32:34] [TRT-LLM] [I] AutoPipeline: Detected LTX-2 native checkpoint (safetensors metadata) at /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08
+[04/22/2026-10:32:34] [TRT-LLM] [I] AutoPipeline: Creating LTX2Pipeline from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08
+[04/22/2026-10:32:34] [TRT-LLM] [I] LTX2 transformer config: rope_type=split, double_precision_rope=True, apply_gated_attention=False
+[04/22/2026-10:32:34] [TRT-LLM] [I] AutoPipeline: Detected LTX-2 native checkpoint (safetensors metadata) at /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08
+[04/22/2026-10:32:34] [TRT-LLM] [I] AutoPipeline: Creating LTX2Pipeline from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/LTX2-nvfp4_Mar08
+[04/22/2026-10:32:34] [TRT-LLM] [I] LTX2 transformer config: rope_type=split, double_precision_rope=True, apply_gated_attention=False
+[04/22/2026-10:32:36] [TRT-LLM] [I] Loading transformer weights via LTX-2 native checkpoint
+[04/22/2026-10:32:36] [TRT-LLM] [I] Loading transformer weights via LTX-2 native checkpoint
+[04/22/2026-10:32:37] [TRT-LLM] [I] Loaded 7038 transformer weight tensors from LTX-2 checkpoint (model.diffusion_model.*)
+[04/22/2026-10:32:37] [TRT-LLM] [I] Loaded 7038 transformer weight tensors from LTX-2 checkpoint (model.diffusion_model.*)
+[04/22/2026-10:32:37] [TRT-LLM] [I] Loading transformer weights...
+[04/22/2026-10:32:37] [TRT-LLM] [I] Loading transformer weights...
+[04/22/2026-10:32:37] [TRT-LLM] [W] LTXModel: 3696 model params NOT in checkpoint: ['transformer_blocks.10.attn1.to_out.0.alpha', 'transformer_blocks.10.attn1.to_out.0.inv_input_scale', 'transformer_blocks.10.attn1.to_out.0.inv_kv_scales', 'transformer_blocks.10.attn1.to_out.0.kv_scales', 'transformer_blocks.10.attn2.to_k.alpha', 'transformer_blocks.10.attn2.to_k.inv_input_scale', 'transformer_blocks.10.attn2.to_k.inv_kv_scales', 'transformer_blocks.10.attn2.to_k.kv_scales', 'transformer_blocks.10.attn2.to_out.0.alpha', 'transformer_blocks.10.attn2.to_out.0.inv_input_scale', 'transformer_blocks.10.attn2.to_out.0.inv_kv_scales', 'transformer_blocks.10.attn2.to_out.0.kv_scales', 'transformer_blocks.10.attn2.to_q.alpha', 'transformer_blocks.10.attn2.to_q.inv_input_scale', 'transformer_blocks.10.attn2.to_q.inv_kv_scales', 'transformer_blocks.10.attn2.to_q.kv_scales', 'transformer_blocks.10.attn2.to_v.alpha', 'transformer_blocks.10.attn2.to_v.inv_input_scale', 'transformer_blocks.10.attn2.to_v.inv_kv_scales', 'transformer_blocks.10.attn2.to_v.kv_scales']...
+[04/22/2026-10:32:37] [TRT-LLM] [W] LTXModel: 3696 model params NOT in checkpoint: ['transformer_blocks.10.attn1.to_out.0.alpha', 'transformer_blocks.10.attn1.to_out.0.inv_input_scale', 'transformer_blocks.10.attn1.to_out.0.inv_kv_scales', 'transformer_blocks.10.attn1.to_out.0.kv_scales', 'transformer_blocks.10.attn2.to_k.alpha', 'transformer_blocks.10.attn2.to_k.inv_input_scale', 'transformer_blocks.10.attn2.to_k.inv_kv_scales', 'transformer_blocks.10.attn2.to_k.kv_scales', 'transformer_blocks.10.attn2.to_out.0.alpha', 'transformer_blocks.10.attn2.to_out.0.inv_input_scale', 'transformer_blocks.10.attn2.to_out.0.inv_kv_scales', 'transformer_blocks.10.attn2.to_out.0.kv_scales', 'transformer_blocks.10.attn2.to_q.alpha', 'transformer_blocks.10.attn2.to_q.inv_input_scale', 'transformer_blocks.10.attn2.to_q.inv_kv_scales', 'transformer_blocks.10.attn2.to_q.kv_scales', 'transformer_blocks.10.attn2.to_v.alpha', 'transformer_blocks.10.attn2.to_v.inv_input_scale', 'transformer_blocks.10.attn2.to_v.inv_kv_scales', 'transformer_blocks.10.attn2.to_v.kv_scales']...
+[04/22/2026-10:32:37] [TRT-LLM] [I] LTXModel weight check: 5706 matched, 3696 missing, 0 unexpected
+[04/22/2026-10:32:37] [TRT-LLM] [I] Pre-quantized checkpoint -- missing parameters (e.g. alpha, inv_input_scale, kv_scales) are derived from checkpoint scales during Linear.load_weights().
+[04/22/2026-10:32:37] [TRT-LLM] [I] LTXModel weight check: 5706 matched, 3696 missing, 0 unexpected
+[04/22/2026-10:32:37] [TRT-LLM] [I] Pre-quantized checkpoint -- missing parameters (e.g. alpha, inv_input_scale, kv_scales) are derived from checkpoint scales during Linear.load_weights().
+Loading LTXModel weights: 0it [00:00, ?it/s]Loading LTXModel weights: 0it [00:00, ?it/s]Loading LTXModel weights: 14it [00:00, 51.20it/s]Loading LTXModel weights: 14it [00:00, 41.98it/s]Loading LTXModel weights: 25it [00:00, 71.23it/s]Loading LTXModel weights: 55it [00:00, 124.57it/s]Loading LTXModel weights: 55it [00:00, 131.74it/s]Loading LTXModel weights: 70it [00:00, 87.43it/s] Loading LTXModel weights: 71it [00:00, 89.34it/s] Loading LTXModel weights: 82it [00:00, 88.01it/s]Loading LTXModel weights: 82it [00:00, 87.56it/s]Loading LTXModel weights: 99it [00:01, 100.99it/s]Loading LTXModel weights: 99it [00:01, 96.92it/s]Loading LTXModel weights: 111it [00:01, 103.49it/s]Loading LTXModel weights: 116it [00:01, 110.01it/s]Loading LTXModel weights: 123it [00:01, 52.85it/s] Loading LTXModel weights: 129it [00:01, 54.48it/s] Loading LTXModel weights: 134it [00:01, 60.05it/s]Loading LTXModel weights: 147it [00:01, 70.43it/s]Loading LTXModel weights: 150it [00:01, 76.55it/s]Loading LTXModel weights: 159it [00:01, 76.61it/s]Loading LTXModel weights: 162it [00:02, 83.38it/s]Loading LTXModel weights: 171it [00:02, 84.02it/s]Loading LTXModel weights: 178it [00:02, 68.82it/s]Loading LTXModel weights: 183it [00:02, 63.85it/s]Loading LTXModel weights: 188it [00:02, 59.41it/s]Loading LTXModel weights: 192it [00:02, 55.09it/s]Loading LTXModel weights: 196it [00:02, 58.14it/s]Loading LTXModel weights: 200it [00:02, 47.28it/s]Loading LTXModel weights: 203it [00:02, 47.97it/s]Loading LTXModel weights: 207it [00:03, 46.92it/s]Loading LTXModel weights: 210it [00:03, 51.65it/s]Loading LTXModel weights: 226it [00:03, 69.10it/s]Loading LTXModel weights: 226it [00:03, 66.84it/s]Loading LTXModel weights: 248it [00:03, 99.10it/s]Loading LTXModel weights: 248it [00:03, 94.13it/s]Loading LTXModel weights: 260it [00:03, 87.01it/s]Loading LTXModel weights: 260it [00:03, 89.76it/s]Loading LTXModel weights: 271it [00:03, 67.03it/s]Loading LTXModel weights: 271it [00:03, 67.69it/s]Loading LTXModel weights: 280it [00:04, 54.67it/s]Loading LTXModel weights: 280it [00:04, 53.97it/s]Loading LTXModel weights: 287it [00:04, 53.43it/s]Loading LTXModel weights: 287it [00:04, 53.25it/s]Loading LTXModel weights: 305it [00:04, 69.84it/s]Loading LTXModel weights: 305it [00:04, 69.89it/s]Loading LTXModel weights: 336it [00:04, 104.62it/s]Loading LTXModel weights: 336it [00:04, 104.22it/s]Loading LTXModel weights: 353it [00:04, 114.36it/s]Loading LTXModel weights: 353it [00:04, 113.97it/s]Loading LTXModel weights: 366it [00:04, 99.99it/s] Loading LTXModel weights: 366it [00:04, 99.80it/s] Loading LTXModel weights: 404it [00:04, 154.22it/s]Loading LTXModel weights: 404it [00:04, 154.57it/s]Loading LTXModel weights: 422it [00:05, 144.11it/s]Loading LTXModel weights: 422it [00:05, 143.88it/s]Loading LTXModel weights: 439it [00:05, 108.89it/s]Loading LTXModel weights: 439it [00:05, 108.82it/s]Loading LTXModel weights: 475it [00:05, 156.02it/s]Loading LTXModel weights: 475it [00:05, 156.13it/s]Loading LTXModel weights: 495it [00:05, 161.59it/s]Loading LTXModel weights: 495it [00:05, 161.65it/s]Loading LTXModel weights: 515it [00:05, 156.05it/s]Loading LTXModel weights: 515it [00:05, 155.40it/s]Loading LTXModel weights: 567it [00:05, 239.60it/s]Loading LTXModel weights: 569it [00:05, 243.38it/s]Loading LTXModel weights: 596it [00:05, 243.92it/s]Loading LTXModel weights: 598it [00:05, 214.71it/s]Loading LTXModel weights: 627it [00:05, 258.14it/s]Loading LTXModel weights: 664it [00:06, 315.72it/s]Loading LTXModel weights: 673it [00:06, 299.88it/s]Loading LTXModel weights: 702it [00:06, 303.42it/s]Loading LTXModel weights: 715it [00:06, 330.04it/s]Loading LTXModel weights: 743it [00:06, 328.51it/s]Loading LTXModel weights: 752it [00:06, 304.13it/s]Loading LTXModel weights: 780it [00:06, 290.79it/s]Loading LTXModel weights: 784it [00:06, 298.70it/s]Loading LTXModel weights: 831it [00:06, 324.47it/s]Loading LTXModel weights: 831it [00:06, 328.88it/s]Loading LTXModel weights: 889it [00:06, 370.61it/s]Loading LTXModel weights: 889it [00:06, 379.00it/s]Loading LTXModel weights: 929it [00:07, 237.19it/s]Loading LTXModel weights: 928it [00:07, 234.21it/s]Loading LTXModel weights: 959it [00:07, 231.58it/s]Loading LTXModel weights: 960it [00:07, 233.92it/s]Loading LTXModel weights: 987it [00:07, 183.29it/s]Loading LTXModel weights: 989it [00:07, 162.60it/s]Loading LTXModel weights: 1010it [00:07, 150.02it/s]Loading LTXModel weights: 1012it [00:07, 157.66it/s]Loading LTXModel weights: 1031it [00:07, 159.09it/s]Loading LTXModel weights: 1034it [00:07, 166.98it/s]Loading LTXModel weights: 1051it [00:07, 162.50it/s]Loading LTXModel weights: 1055it [00:07, 155.12it/s]Loading LTXModel weights: 1070it [00:08, 124.64it/s]Loading LTXModel weights: 1073it [00:08, 113.39it/s]Loading LTXModel weights: 1086it [00:08, 116.09it/s]Loading LTXModel weights: 1095it [00:08, 129.36it/s]Loading LTXModel weights: 1117it [00:08, 149.04it/s]Loading LTXModel weights: 1126it [00:08, 145.49it/s]Loading LTXModel weights: 1135it [00:08, 142.22it/s]Loading LTXModel weights: 1143it [00:08, 141.47it/s]Loading LTXModel weights: 1152it [00:08, 106.76it/s]Loading LTXModel weights: 1159it [00:08, 117.75it/s]Loading LTXModel weights: 1177it [00:08, 129.50it/s]Loading LTXModel weights: 1180it [00:08, 132.47it/s]Loading LTXModel weights: 1205it [00:09, 144.69it/s]Loading LTXModel weights: 1205it [00:09, 144.08it/s]Loading LTXModel weights: 1221it [00:09, 138.47it/s]Loading LTXModel weights: 1222it [00:09, 131.41it/s]Loading LTXModel weights: 1236it [00:09, 106.85it/s]Loading LTXModel weights: 1237it [00:09, 110.12it/s]Loading LTXModel weights: 1261it [00:09, 134.18it/s]Loading LTXModel weights: 1263it [00:09, 138.80it/s]Loading LTXModel weights: 1284it [00:09, 138.58it/s]Loading LTXModel weights: 1284it [00:09, 138.46it/s]Loading LTXModel weights: 1300it [00:09, 142.33it/s]Loading LTXModel weights: 1300it [00:09, 142.23it/s]Loading LTXModel weights: 1316it [00:10, 105.70it/s]Loading LTXModel weights: 1316it [00:10, 105.66it/s]Loading LTXModel weights: 1335it [00:10, 121.71it/s]Loading LTXModel weights: 1335it [00:10, 121.70it/s]Loading LTXModel weights: 1363it [00:10, 137.20it/s]Loading LTXModel weights: 1363it [00:10, 137.17it/s]Loading LTXModel weights: 1379it [00:10, 142.09it/s]Loading LTXModel weights: 1379it [00:10, 142.05it/s]Loading LTXModel weights: 1395it [00:10, 116.76it/s]Loading LTXModel weights: 1395it [00:10, 116.77it/s]Loading LTXModel weights: 1426it [00:10, 155.58it/s]Loading LTXModel weights: 1426it [00:10, 155.56it/s]Loading LTXModel weights: 1447it [00:10, 162.96it/s]Loading LTXModel weights: 1447it [00:10, 162.95it/s]Loading LTXModel weights: 1466it [00:11, 122.57it/s]Loading LTXModel weights: 1466it [00:11, 122.56it/s]Loading LTXModel weights: 1508it [00:11, 180.47it/s]Loading LTXModel weights: 1508it [00:11, 180.47it/s]Loading LTXModel weights: 1531it [00:11, 157.62it/s]Loading LTXModel weights: 1531it [00:11, 157.62it/s]Loading LTXModel weights: 1551it [00:11, 129.51it/s]Loading LTXModel weights: 1551it [00:11, 129.50it/s]Loading LTXModel weights: 1579it [00:11, 155.76it/s]Loading LTXModel weights: 1579it [00:11, 155.77it/s]Loading LTXModel weights: 1605it [00:11, 168.55it/s]Loading LTXModel weights: 1605it [00:11, 168.55it/s]Loading LTXModel weights: 1625it [00:12, 122.43it/s]Loading LTXModel weights: 1625it [00:12, 122.43it/s]Loading LTXModel weights: 1648it [00:12, 141.08it/s]Loading LTXModel weights: 1648it [00:12, 141.07it/s]Loading LTXModel weights: 1675it [00:12, 167.11it/s]Loading LTXModel weights: 1675it [00:12, 167.11it/s]Loading LTXModel weights: 1696it [00:12, 144.47it/s]Loading LTXModel weights: 1696it [00:12, 144.47it/s]Loading LTXModel weights: 1714it [00:12, 121.35it/s]Loading LTXModel weights: 1714it [00:12, 121.35it/s]Loading LTXModel weights: 1737it [00:12, 140.52it/s]Loading LTXModel weights: 1737it [00:12, 140.49it/s]Loading LTXModel weights: 1758it [00:13, 140.40it/s]Loading LTXModel weights: 1758it [00:13, 140.41it/s]Loading LTXModel weights: 1774it [00:13, 138.76it/s]Loading LTXModel weights: 1774it [00:13, 138.75it/s]Loading LTXModel weights: 1790it [00:13, 109.43it/s]Loading LTXModel weights: 1790it [00:13, 109.43it/s]Loading LTXModel weights: 1809it [00:13, 124.69it/s]Loading LTXModel weights: 1809it [00:13, 124.70it/s]Loading LTXModel weights: 1837it [00:13, 136.45it/s]Loading LTXModel weights: 1837it [00:13, 136.44it/s]Loading LTXModel weights: 1852it [00:13, 137.92it/s]Loading LTXModel weights: 1852it [00:13, 137.91it/s]Loading LTXModel weights: 1867it [00:13, 133.00it/s]Loading LTXModel weights: 1867it [00:13, 132.99it/s]Loading LTXModel weights: 1903it [00:14, 185.27it/s]Loading LTXModel weights: 1903it [00:14, 185.28it/s]Loading LTXModel weights: 1924it [00:14, 180.06it/s]Loading LTXModel weights: 1924it [00:14, 180.06it/s]Loading LTXModel weights: 1944it [00:14, 129.30it/s]Loading LTXModel weights: 1944it [00:14, 129.30it/s]Loading LTXModel weights: 1984it [00:14, 183.26it/s]Loading LTXModel weights: 1984it [00:14, 183.26it/s]Loading LTXModel weights: 2016it [00:14, 199.55it/s]Loading LTXModel weights: 2016it [00:14, 199.54it/s]Loading LTXModel weights: 2043it [00:14, 204.98it/s]Loading LTXModel weights: 2043it [00:14, 204.98it/s]Loading LTXModel weights: 2070it [00:14, 220.37it/s]Loading LTXModel weights: 2070it [00:14, 220.37it/s]Loading LTXModel weights: 2095it [00:15, 157.62it/s]Loading LTXModel weights: 2095it [00:15, 157.62it/s]Loading LTXModel weights: 2115it [00:15, 157.18it/s]Loading LTXModel weights: 2115it [00:15, 157.17it/s]Loading LTXModel weights: 2142it [00:15, 177.44it/s]Loading LTXModel weights: 2142it [00:15, 177.44it/s]Loading LTXModel weights: 2163it [00:15, 163.64it/s]Loading LTXModel weights: 2163it [00:15, 163.63it/s]Loading LTXModel weights: 2182it [00:15, 127.03it/s]Loading LTXModel weights: 2182it [00:15, 127.03it/s]Loading LTXModel weights: 2223it [00:15, 177.54it/s]Loading LTXModel weights: 2223it [00:15, 177.55it/s]Loading LTXModel weights: 2245it [00:16, 149.67it/s]Loading LTXModel weights: 2245it [00:16, 149.66it/s]Loading LTXModel weights: 2264it [00:16, 126.22it/s]Loading LTXModel weights: 2264it [00:16, 126.22it/s]Loading LTXModel weights: 2283it [00:16, 137.20it/s]Loading LTXModel weights: 2283it [00:16, 137.20it/s]Loading LTXModel weights: 2311it [00:16, 149.66it/s]Loading LTXModel weights: 2311it [00:16, 149.65it/s]Loading LTXModel weights: 2332it [00:16, 145.32it/s]Loading LTXModel weights: 2332it [00:16, 145.31it/s]Loading LTXModel weights: 2348it [00:16, 144.45it/s]Loading LTXModel weights: 2348it [00:16, 144.45it/s]Loading LTXModel weights: 2374it [00:17, 167.46it/s]Loading LTXModel weights: 2374it [00:17, 167.45it/s]Loading LTXModel weights: 2392it [00:17, 164.70it/s]Loading LTXModel weights: 2392it [00:17, 164.69it/s]Loading LTXModel weights: 2410it [00:17, 153.32it/s]Loading LTXModel weights: 2410it [00:17, 153.32it/s]Loading LTXModel weights: 2426it [00:17, 129.33it/s]Loading LTXModel weights: 2426it [00:17, 129.33it/s]Loading LTXModel weights: 2453it [00:17, 160.61it/s]Loading LTXModel weights: 2453it [00:17, 160.61it/s]Loading LTXModel weights: 2471it [00:17, 146.54it/s]Loading LTXModel weights: 2471it [00:17, 146.52it/s]Loading LTXModel weights: 2487it [00:17, 145.11it/s]Loading LTXModel weights: 2487it [00:17, 145.10it/s]Loading LTXModel weights: 2503it [00:17, 137.57it/s]Loading LTXModel weights: 2503it [00:17, 137.57it/s]Loading LTXModel weights: 2524it [00:18, 155.34it/s]Loading LTXModel weights: 2523it [00:18, 152.88it/s]Loading LTXModel weights: 2569it [00:18, 192.59it/s]Loading LTXModel weights: 2569it [00:18, 193.24it/s]Loading LTXModel weights: 2588it [00:18, 187.40it/s]Loading LTXModel weights: 2589it [00:18, 188.99it/s]Loading LTXModel weights: 2614it [00:18, 199.52it/s]Loading LTXModel weights: 2614it [00:18, 198.52it/s]Loading LTXModel weights: 2634it [00:18, 183.04it/s]Loading LTXModel weights: 2634it [00:18, 183.72it/s]Loading LTXModel weights: 2653it [00:18, 130.27it/s]Loading LTXModel weights: 2653it [00:18, 130.63it/s]Loading LTXModel weights: 2678it [00:18, 152.38it/s]Loading LTXModel weights: 2678it [00:18, 152.67it/s]Loading LTXModel weights: 2706it [00:19, 153.95it/s]Loading LTXModel weights: 2706it [00:19, 154.15it/s]Loading LTXModel weights: 2723it [00:19, 144.44it/s]Loading LTXModel weights: 2723it [00:19, 144.30it/s]Loading LTXModel weights: 2739it [00:19, 116.99it/s]Loading LTXModel weights: 2739it [00:19, 116.90it/s]Loading LTXModel weights: 2774it [00:19, 160.06it/s]Loading LTXModel weights: 2774it [00:19, 160.13it/s]Loading LTXModel weights: 2793it [00:19, 166.21it/s]Loading LTXModel weights: 2793it [00:19, 166.27it/s]Loading LTXModel weights: 2812it [00:19, 131.19it/s]Loading LTXModel weights: 2812it [00:19, 131.22it/s]Loading LTXModel weights: 2864it [00:20, 181.77it/s]Loading LTXModel weights: 2864it [00:20, 181.79it/s]Loading LTXModel weights: 2884it [00:20, 175.33it/s]Loading LTXModel weights: 2884it [00:20, 175.35it/s]Loading LTXModel weights: 2903it [00:20, 139.87it/s]Loading LTXModel weights: 2903it [00:20, 139.86it/s]Loading LTXModel weights: 2934it [00:20, 169.55it/s]Loading LTXModel weights: 2934it [00:20, 169.55it/s]Loading LTXModel weights: 2954it [00:20, 158.59it/s]Loading LTXModel weights: 2954it [00:20, 158.58it/s]Loading LTXModel weights: 2972it [00:20, 137.31it/s]Loading LTXModel weights: 2972it [00:20, 137.31it/s]Loading LTXModel weights: 2994it [00:21, 152.64it/s]Loading LTXModel weights: 2994it [00:21, 152.64it/s]Loading LTXModel weights: 3027it [00:21, 190.03it/s]Loading LTXModel weights: 3027it [00:21, 190.03it/s]Loading LTXModel weights: 3049it [00:21, 145.52it/s]Loading LTXModel weights: 3049it [00:21, 145.52it/s]Loading LTXModel weights: 3088it [00:21, 191.94it/s]Loading LTXModel weights: 3088it [00:21, 191.94it/s]Loading LTXModel weights: 3112it [00:21, 189.41it/s]Loading LTXModel weights: 3112it [00:21, 189.40it/s]Loading LTXModel weights: 3134it [00:21, 170.12it/s]Loading LTXModel weights: 3134it [00:21, 170.12it/s]Loading LTXModel weights: 3180it [00:21, 217.18it/s]Loading LTXModel weights: 3180it [00:21, 217.18it/s]Loading LTXModel weights: 3204it [00:22, 183.86it/s]Loading LTXModel weights: 3204it [00:22, 183.85it/s]Loading LTXModel weights: 3234it [00:22, 201.01it/s]Loading LTXModel weights: 3234it [00:22, 201.01it/s]Loading LTXModel weights: 3280it [00:22, 254.33it/s]Loading LTXModel weights: 3280it [00:22, 254.33it/s]Loading LTXModel weights: 3338it [00:22, 297.81it/s]Loading LTXModel weights: 3338it [00:22, 297.81it/s]Loading LTXModel weights: 3370it [00:22, 253.18it/s]Loading LTXModel weights: 3370it [00:22, 252.52it/s]Loading LTXModel weights: 3438it [00:22, 310.60it/s]Loading LTXModel weights: 3438it [00:22, 267.48it/s]Loading LTXModel weights: 3487it [00:22, 348.58it/s]Loading LTXModel weights: 3517it [00:23, 360.78it/s]Loading LTXModel weights: 3525it [00:23, 342.19it/s]Loading LTXModel weights: 3585it [00:23, 424.26it/s]Loading LTXModel weights: 3592it [00:23, 419.90it/s]Loading LTXModel weights: 3633it [00:23, 391.53it/s]Loading LTXModel weights: 3637it [00:23, 397.61it/s]Loading LTXModel weights: 3677it [00:23, 203.99it/s]Loading LTXModel weights: 3679it [00:23, 179.47it/s]Loading LTXModel weights: 3710it [00:24, 193.27it/s]Loading LTXModel weights: 3711it [00:24, 188.27it/s]Loading LTXModel weights: 3738it [00:24, 167.90it/s]Loading LTXModel weights: 3740it [00:24, 164.61it/s]Loading LTXModel weights: 3761it [00:24, 111.44it/s]Loading LTXModel weights: 3764it [00:24, 109.23it/s]Loading LTXModel weights: 3789it [00:24, 124.60it/s]Loading LTXModel weights: 3789it [00:24, 129.60it/s]Loading LTXModel weights: 3809it [00:25, 132.49it/s]Loading LTXModel weights: 3809it [00:25, 133.84it/s]Loading LTXModel weights: 3828it [00:25, 125.46it/s]Loading LTXModel weights: 3828it [00:25, 129.36it/s]Loading LTXModel weights: 3845it [00:25, 108.13it/s]Loading LTXModel weights: 3845it [00:25, 110.83it/s]Loading LTXModel weights: 3863it [00:25, 117.89it/s]Loading LTXModel weights: 3863it [00:25, 115.75it/s]Loading LTXModel weights: 3878it [00:25, 123.01it/s]Loading LTXModel weights: 3878it [00:25, 121.31it/s]Loading LTXModel weights: 3888it [00:25, 151.41it/s]
+Loading LTXModel weights: 3888it [00:25, 151.41it/s]
+[04/22/2026-10:33:03] [TRT-LLM] [I] Transformer weights loaded successfully.
+[04/22/2026-10:33:03] [TRT-LLM] [I] Transformer weights loaded successfully.
+[04/22/2026-10:33:03] [TRT-LLM] [I] Loading tokenizer (Gemma3) from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/gemma-3-12b-it...
+[04/22/2026-10:33:03] [TRT-LLM] [I] Loading tokenizer (Gemma3) from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/gemma-3-12b-it...
+[04/22/2026-10:33:04] [TRT-LLM] [I] Loading text encoder (Gemma3) from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/gemma-3-12b-it...
+`torch_dtype` is deprecated! Use `dtype` instead!
+[04/22/2026-10:33:04] [TRT-LLM] [I] Loading text encoder (Gemma3) from /lustre/fsw/coreai_comparch_infbench/common/cache/hub/gemma-3-12b-it...
+`torch_dtype` is deprecated! Use `dtype` instead!
+Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:   0%|          | 0/5 [00:00<?, ?it/s]Loading checkpoint shards:  20%|██        | 1/5 [00:00<00:00,  9.10it/s]Loading checkpoint shards:  20%|██        | 1/5 [00:00<00:00,  6.06it/s]Loading checkpoint shards:  80%|████████  | 4/5 [00:00<00:00, 14.27it/s]Loading checkpoint shards:  80%|████████  | 4/5 [00:00<00:00, 16.76it/s]Loading checkpoint shards: 100%|██████████| 5/5 [00:00<00:00, 14.10it/s]
+Loading checkpoint shards: 100%|██████████| 5/5 [00:00<00:00, 16.69it/s]
+[04/22/2026-10:33:32] [TRT-LLM] [I] Loading native video decoder...
+[04/22/2026-10:33:32] [TRT-LLM] [I] Loading native video decoder...
+[04/22/2026-10:33:36] [TRT-LLM] [W] Unexpected keys for prefix '['vae.decoder.', 'vae.']' (92): ['encoder.conv_in.conv.bias', 'encoder.conv_in.conv.weight', 'encoder.conv_out.conv.bias', 'encoder.conv_out.conv.weight', 'encoder.down_blocks.0.res_blocks.0.conv1.conv.bias']...
+[04/22/2026-10:33:36] [TRT-LLM] [W] Unexpected keys for prefix '['vae.decoder.', 'vae.']' (92): ['encoder.conv_in.conv.bias', 'encoder.conv_in.conv.weight', 'encoder.conv_out.conv.bias', 'encoder.conv_out.conv.weight', 'encoder.down_blocks.0.res_blocks.0.conv1.conv.bias']...
+[04/22/2026-10:33:37] [TRT-LLM] [I] Loading native audio decoder...
+[04/22/2026-10:33:37] [TRT-LLM] [I] Loading native audio decoder...
+[04/22/2026-10:33:38] [TRT-LLM] [W] Unexpected keys for prefix '['audio_vae.decoder.', 'audio_vae.']' (44): ['encoder.conv_in.conv.bias', 'encoder.conv_in.conv.weight', 'encoder.conv_out.conv.bias', 'encoder.conv_out.conv.weight', 'encoder.down.0.block.0.conv1.conv.bias']...
+[04/22/2026-10:33:38] [TRT-LLM] [W] Unexpected keys for prefix '['audio_vae.decoder.', 'audio_vae.']' (44): ['encoder.conv_in.conv.bias', 'encoder.conv_in.conv.weight', 'encoder.conv_out.conv.bias', 'encoder.conv_out.conv.weight', 'encoder.down.0.block.0.conv1.conv.bias']...
+[04/22/2026-10:33:38] [TRT-LLM] [I] Loading native vocoder...
+[04/22/2026-10:33:38] [TRT-LLM] [I] Loading native vocoder...
+[04/22/2026-10:33:40] [TRT-LLM] [I] Loading native text connectors...
+[04/22/2026-10:33:40] [TRT-LLM] [I] Loading native text connectors...
+[04/22/2026-10:33:53] [TRT-LLM] [I] Loading native video encoder (for i2v)...
+[04/22/2026-10:33:53] [TRT-LLM] [I] Loading native video encoder (for i2v)...
+[04/22/2026-10:33:59] [TRT-LLM] [W] Unexpected keys for prefix '['vae.encoder.', 'vae.']' (90): ['decoder.conv_in.conv.bias', 'decoder.conv_in.conv.weight', 'decoder.conv_out.conv.bias', 'decoder.conv_out.conv.weight', 'decoder.up_blocks.0.res_blocks.0.conv1.conv.bias']...
+[04/22/2026-10:33:59] [TRT-LLM] [W] Unexpected keys for prefix '['vae.encoder.', 'vae.']' (90): ['decoder.conv_in.conv.bias', 'decoder.conv_in.conv.weight', 'decoder.conv_out.conv.bias', 'decoder.conv_out.conv.weight', 'decoder.up_blocks.0.res_blocks.0.conv1.conv.bias']...
+[04/22/2026-10:34:00] [TRT-LLM] [I] Model loaded successfully in 85.57s
+[04/22/2026-10:34:00] [TRT-LLM] [I] LTX2 pipeline post-load complete
+[04/22/2026-10:34:00] [TRT-LLM] [I] torch.compile: PipelineComponent.TRANSFORMER.transformer_blocks (48 blocks, mode=default)
+[04/22/2026-10:34:00] [TRT-LLM] [I] Model loaded successfully in 85.58s
+[04/22/2026-10:34:00] [TRT-LLM] [I] LTX2 pipeline post-load complete
+[04/22/2026-10:34:00] [TRT-LLM] [I] torch.compile: PipelineComponent.TRANSFORMER.transformer_blocks (48 blocks, mode=default)
+[04/22/2026-10:34:00] [TRT-LLM] [I] [Autotuner] Autotuning process starts ...
+[04/22/2026-10:34:00] [TRT-LLM] [I] Running warmup for LTX2Pipeline with 1 shapes and 2 steps...
+[04/22/2026-10:34:00] [TRT-LLM] [I] Warmup: 512x768, 121 frames, 2 steps
+[04/22/2026-10:34:00] [TRT-LLM] [I] Encoding prompts...
+[04/22/2026-10:34:00] [TRT-LLM] [I] [Autotuner] Autotuning process starts ...
+[04/22/2026-10:34:00] [TRT-LLM] [I] Running warmup for LTX2Pipeline with 1 shapes and 2 steps...
+[04/22/2026-10:34:00] [TRT-LLM] [I] Warmup: 512x768, 121 frames, 2 steps
+[04/22/2026-10:34:00] [TRT-LLM] [I] Encoding prompts...
+[04/22/2026-10:34:00] [TRT-LLM] [I] Prompt encoding completed in 0.54s
+[04/22/2026-10:34:00] [TRT-LLM] [I] Prompt encoding completed in 0.53s
+[04/22/2026-10:34:01] [TRT-LLM] [I] Preparing latents...
+[04/22/2026-10:34:01] [TRT-LLM] [I] Preparing latents...
+[04/22/2026-10:34:01] [TRT-LLM] [I] Denoising [primary, audio]: 2 steps, guidance=4.0
+/usr/local/lib/python3.12/dist-packages/torch/_dynamo/variables/functions.py:2152: UserWarning: Dynamo detected a call to a `functools.lru_cache`-wrapped function at 'nvtx.py:108'. Dynamo ignores the cache wrapper and directly traces the wrapped function. Silent incorrectness is only a *potential* risk, not something we have observed. Enable TORCH_LOGS=+dynamo for a DEBUG stack trace.
+
+This call originates from:
+  File "/usr/local/lib/python3.12/dist-packages/nvtx/nvtx.py", line 108, in __init__
+    self.domain = get_domain(domain)
+
+  torch._dynamo.utils.warn_once(msg)
+/usr/local/lib/python3.12/dist-packages/torch/_dynamo/variables/functions.py:2152: UserWarning: Dynamo detected a call to a `functools.lru_cache`-wrapped function at 'nvtx.py:108'. Dynamo ignores the cache wrapper and directly traces the wrapped function. Silent incorrectness is only a *potential* risk, not something we have observed. Enable TORCH_LOGS=+dynamo for a DEBUG stack trace.
+
+This call originates from:
+  File "/usr/local/lib/python3.12/dist-packages/nvtx/nvtx.py", line 108, in __init__
+    self.domain = get_domain(domain)
+
+  torch._dynamo.utils.warn_once(msg)
+[04/22/2026-10:34:04] [TRT-LLM] [I] PDL enabled
+[04/22/2026-10:34:04] [TRT-LLM] [I] PDL enabled
+[04/22/2026-10:34:55] [TRT-LLM] [I] Step 1/2 | 54.47s (trans=54.47s cfg=0.000s sched=0.000s) | Avg=54.47s/step ETA=54.5s
+[04/22/2026-10:34:56] [TRT-LLM] [I] Step 2/2 | 0.36s (trans=0.36s cfg=0.000s sched=0.003s) | Avg=27.42s/step ETA=0.0s
+[04/22/2026-10:34:56] [TRT-LLM] [I] Decoding video and audio...
+[04/22/2026-10:34:56] [TRT-LLM] [I] ================================================================================
+[04/22/2026-10:34:56] [TRT-LLM] [I] Denoising done: 54.84s (27.42s/step)
+[04/22/2026-10:34:56] [TRT-LLM] [I] Decoding video and audio...
+[04/22/2026-10:34:56] [TRT-LLM] [I] Encoding prompts...
+[04/22/2026-10:34:56] [TRT-LLM] [I] Prompt encoding completed in 0.12s
+[04/22/2026-10:34:56] [TRT-LLM] [I] Preparing latents...
+[04/22/2026-10:34:56] [TRT-LLM] [I] Encoding conditioning image for i2v...
+[04/22/2026-10:34:56] [TRT-LLM] [I] i2v conditioning: 384 conditioned tokens of 6144 total, strength=1.0
+[04/22/2026-10:34:56] [TRT-LLM] [I] Decoding completed in 0.87s
+[04/22/2026-10:34:56] [TRT-LLM] [I] Total pipeline time: 56.81s
+[04/22/2026-10:34:56] [TRT-LLM] [I] Encoding prompts...
+[04/22/2026-10:34:57] [TRT-LLM] [I] Prompt encoding completed in 0.12s
+[04/22/2026-10:34:57] [TRT-LLM] [I] Preparing latents...
+[04/22/2026-10:34:57] [TRT-LLM] [I] Encoding conditioning image for i2v...
+[04/22/2026-10:34:57] [TRT-LLM] [I] i2v conditioning: 384 conditioned tokens of 6144 total, strength=1.0
+[04/22/2026-10:34:57] [TRT-LLM] [I] Denoising [primary, audio]: 2 steps, guidance=4.0
+[04/22/2026-10:34:59] [TRT-LLM] [I] Step 1/2 | 2.29s (trans=2.25s cfg=0.000s sched=0.039s) | Avg=2.29s/step ETA=2.3s
+[04/22/2026-10:34:59] [TRT-LLM] [I] Step 2/2 | 0.36s (trans=0.36s cfg=0.000s sched=0.004s) | Avg=1.33s/step ETA=0.0s
+[04/22/2026-10:34:59] [TRT-LLM] [I] Decoding video and audio...
+[04/22/2026-10:34:59] [TRT-LLM] [I] ================================================================================
+[04/22/2026-10:34:59] [TRT-LLM] [I] Denoising done: 2.66s (1.33s/step)
+[04/22/2026-10:34:59] [TRT-LLM] [I] Decoding video and audio...
+[04/22/2026-10:34:59] [TRT-LLM] [I] Warmup completed in 59.67s
+[04/22/2026-10:34:59] [TRT-LLM] [I] [Autotuner] Autotuning process ends
+[04/22/2026-10:34:59] [TRT-LLM] [I] Warmup completed in 59.73s
+[04/22/2026-10:34:59] [TRT-LLM] [I] Pipeline loaded: LTX2Pipeline (total load time: 145.30s)
+[04/22/2026-10:34:59] [TRT-LLM] [I] Worker 1: Pipeline ready
+[04/22/2026-10:35:00] [TRT-LLM] [I] Decoding completed in 0.37s
+[04/22/2026-10:35:00] [TRT-LLM] [I] Total pipeline time: 3.21s
+[04/22/2026-10:35:00] [TRT-LLM] [I] Warmup completed in 60.02s
+[04/22/2026-10:35:00] [TRT-LLM] [I] [Autotuner] Autotuning process ends
+[04/22/2026-10:35:00] [TRT-LLM] [I] Warmup completed in 60.09s
+[04/22/2026-10:35:00] [TRT-LLM] [I] Pipeline loaded: LTX2Pipeline (total load time: 145.67s)
+[04/22/2026-10:35:00] [TRT-LLM] [I] Worker 0: Pipeline ready
+[04/22/2026-10:35:00] [TRT-LLM] [I] Worker 0: Sending READY
+[04/22/2026-10:35:00] [TRT-LLM] [I] DiffusionClient: Received READY signal
+[04/22/2026-10:35:00] [TRT-LLM] [I] DiffusionClient: Workers ready (163.8s)
+[04/22/2026-10:35:00] [TRT-LLM] [I] Generating video with audio for prompt: 'A cat walks through a field of flowers'
+[04/22/2026-10:35:00] [TRT-LLM] [I] Resolution: 720x1280, Frames: 121, FPS: 24.0, Steps: 40
+[04/22/2026-10:35:00] [TRT-LLM] [I] DiffusionClient: Sending request 0
+[04/22/2026-10:35:00] [TRT-LLM] [I] Worker 0: Request available
+[04/22/2026-10:35:00] [TRT-LLM] [I] Worker 0: Processing request 0
+[04/22/2026-10:35:00] [TRT-LLM] [W] Requested shape (720, 1280, 121) was not warmed up. First request with this shape will be slower due to torch.compile recompilation or CUDA graph capture. Warmed-up shapes: {(512, 768, 121)}
+[04/22/2026-10:35:00] [TRT-LLM] [I] Worker 1: Processing request 0
+[04/22/2026-10:35:00] [TRT-LLM] [W] Requested shape (720, 1280, 121) was not warmed up. First request with this shape will be slower due to torch.compile recompilation or CUDA graph capture. Warmed-up shapes: {(512, 768, 121)}
+[04/22/2026-10:35:00] [TRT-LLM] [I] Encoding prompts...
+[04/22/2026-10:35:00] [TRT-LLM] [I] Encoding prompts...
+[04/22/2026-10:35:00] [TRT-LLM] [I] Prompt encoding completed in 0.12s
+[04/22/2026-10:35:00] [TRT-LLM] [I] Preparing latents...
+[04/22/2026-10:35:00] [TRT-LLM] [I] Prompt encoding completed in 0.68s
+[04/22/2026-10:35:01] [TRT-LLM] [I] Preparing latents...
+[04/22/2026-10:35:01] [TRT-LLM] [I] Denoising [primary, audio]: 40 steps, guidance=4.0
+[04/22/2026-10:35:06] [TRT-LLM] [W] [AutoTuner] trtllm::fp4_quantize_tactic using the fallback tactic, due to cache miss on input shapes=(torch.Size([14080, 4096]), torch.Size([1]))
+[04/22/2026-10:35:06] [TRT-LLM] [W] [AutoTuner] trtllm::nvfp4_gemm::gemm using the fallback tactic, due to cache miss on input shapes=(torch.Size([14080, 2048]), torch.Size([12288, 2048]), torch.Size([3604480]), torch.Size([3145728]), torch.Size([1]))
+[04/22/2026-10:35:06] [TRT-LLM] [W] [AutoTuner] trtllm::fp4_quantize_tactic using the fallback tactic, due to cache miss on input shapes=(torch.Size([14080, 4096]), torch.Size([1]))
+[04/22/2026-10:35:06] [TRT-LLM] [W] [AutoTuner] trtllm::nvfp4_gemm::gemm using the fallback tactic, due to cache miss on input shapes=(torch.Size([14080, 2048]), torch.Size([12288, 2048]), torch.Size([3604480]), torch.Size([3145728]), torch.Size([1]))
+[04/22/2026-10:35:07] [TRT-LLM] [I] Step 1/40 | 6.37s (trans=6.37s cfg=0.000s sched=0.000s) | Avg=6.37s/step ETA=248.4s
+[04/22/2026-10:35:07] [TRT-LLM] [I] Step 2/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=3.46s/step ETA=131.5s
+[04/22/2026-10:35:08] [TRT-LLM] [I] Step 3/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=2.49s/step ETA=92.1s
+[04/22/2026-10:35:09] [TRT-LLM] [I] Step 4/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=2.00s/step ETA=72.2s
+[04/22/2026-10:35:09] [TRT-LLM] [I] Step 5/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=1.71s/step ETA=60.0s
+[04/22/2026-10:35:10] [TRT-LLM] [I] Step 6/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=1.52s/step ETA=51.7s
+[04/22/2026-10:35:10] [TRT-LLM] [I] Step 7/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=1.38s/step ETA=45.6s
+[04/22/2026-10:35:11] [TRT-LLM] [I] Step 8/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=1.28s/step ETA=40.9s
+[04/22/2026-10:35:11] [TRT-LLM] [I] Step 9/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=1.20s/step ETA=37.1s
+[04/22/2026-10:35:12] [TRT-LLM] [I] Step 10/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=1.13s/step ETA=33.9s
+[04/22/2026-10:35:12] [TRT-LLM] [I] Step 11/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=1.08s/step ETA=31.3s
+[04/22/2026-10:35:13] [TRT-LLM] [I] Step 12/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=1.03s/step ETA=29.0s
+[04/22/2026-10:35:13] [TRT-LLM] [I] Step 13/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=1.00s/step ETA=26.9s
+[04/22/2026-10:35:14] [TRT-LLM] [I] Step 14/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.97s/step ETA=25.1s
+[04/22/2026-10:35:15] [TRT-LLM] [I] Step 15/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=0.94s/step ETA=23.4s
+[04/22/2026-10:35:15] [TRT-LLM] [I] Step 16/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=0.91s/step ETA=21.9s
+[04/22/2026-10:35:16] [TRT-LLM] [I] Step 17/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=0.89s/step ETA=20.5s
+[04/22/2026-10:35:16] [TRT-LLM] [I] Step 18/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.87s/step ETA=19.2s
+[04/22/2026-10:35:17] [TRT-LLM] [I] Step 19/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.86s/step ETA=18.0s
+[04/22/2026-10:35:17] [TRT-LLM] [I] Step 20/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.84s/step ETA=16.8s
+[04/22/2026-10:35:18] [TRT-LLM] [I] Step 21/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.83s/step ETA=15.7s
+[04/22/2026-10:35:18] [TRT-LLM] [I] Step 22/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.81s/step ETA=14.7s
+[04/22/2026-10:35:19] [TRT-LLM] [I] Step 23/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.80s/step ETA=13.6s
+[04/22/2026-10:35:20] [TRT-LLM] [I] Step 24/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.79s/step ETA=12.7s
+[04/22/2026-10:35:20] [TRT-LLM] [I] Step 25/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.78s/step ETA=11.7s
+[04/22/2026-10:35:21] [TRT-LLM] [I] Step 26/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.77s/step ETA=10.8s
+[04/22/2026-10:35:21] [TRT-LLM] [I] Step 27/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.074s) | Avg=0.77s/step ETA=9.9s
+[04/22/2026-10:35:22] [TRT-LLM] [I] Step 28/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=0.76s/step ETA=9.1s
+[04/22/2026-10:35:22] [TRT-LLM] [I] Step 29/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.074s) | Avg=0.75s/step ETA=8.3s
+[04/22/2026-10:35:23] [TRT-LLM] [I] Step 30/40 | 0.55s (trans=0.48s cfg=0.000s sched=0.073s) | Avg=0.74s/step ETA=7.4s
+[04/22/2026-10:35:23] [TRT-LLM] [I] Step 31/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=0.74s/step ETA=6.6s
+[04/22/2026-10:35:24] [TRT-LLM] [I] Step 32/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.73s/step ETA=5.9s
+[04/22/2026-10:35:24] [TRT-LLM] [I] Step 33/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.73s/step ETA=5.1s
+[04/22/2026-10:35:25] [TRT-LLM] [I] Step 34/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.074s) | Avg=0.72s/step ETA=4.3s
+[04/22/2026-10:35:26] [TRT-LLM] [I] Step 35/40 | 0.55s (trans=0.48s cfg=0.000s sched=0.073s) | Avg=0.72s/step ETA=3.6s
+[04/22/2026-10:35:26] [TRT-LLM] [I] Step 36/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.074s) | Avg=0.71s/step ETA=2.8s
+[04/22/2026-10:35:27] [TRT-LLM] [I] Step 37/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=0.71s/step ETA=2.1s
+[04/22/2026-10:35:27] [TRT-LLM] [I] Step 38/40 | 0.55s (trans=0.48s cfg=0.001s sched=0.073s) | Avg=0.70s/step ETA=1.4s
+[04/22/2026-10:35:28] [TRT-LLM] [I] Step 39/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.074s) | Avg=0.70s/step ETA=0.7s
+[04/22/2026-10:35:28] [TRT-LLM] [I] Step 40/40 | 0.55s (trans=0.47s cfg=0.001s sched=0.073s) | Avg=0.70s/step ETA=0.0s
+[04/22/2026-10:35:28] [TRT-LLM] [I] ================================================================================
+[04/22/2026-10:35:28] [TRT-LLM] [I] Denoising done: 27.81s (0.70s/step)
+[04/22/2026-10:35:28] [TRT-LLM] [I] Decoding video and audio...
+[04/22/2026-10:35:28] [TRT-LLM] [I] Decoding video and audio...
+[04/22/2026-10:35:30] [TRT-LLM] [I] Decoding completed in 1.42s
+[04/22/2026-10:35:30] [TRT-LLM] [I] Total pipeline time: 29.94s
+[04/22/2026-10:35:32] [TRT-LLM] [I] Generation completed in 32.16s
+[04/22/2026-10:35:32] [TRT-LLM] [I] Using PurePythonEncoder for video encoding
+[04/22/2026-10:35:32] [TRT-LLM] [W] PurePythonEncoder does not support audio. Audio will be ignored. Use FfmpegCliEncoder for audio support.
+[04/22/2026-10:35:35] [TRT-LLM] [I] Saved video to /lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results/results/bench-visual-gen/v1bisect-patched-bb414983c-direct_2116795/output.avi
+[04/22/2026-10:35:35] [TRT-LLM] [I] VisualGen: Shutting down
+[04/22/2026-10:35:35] [TRT-LLM] [I] DiffusionClient: Shutting down
+[04/22/2026-10:35:35] [TRT-LLM] [I] DiffusionClient: Sending shutdown signal
+[04/22/2026-10:35:35] [TRT-LLM] [I] Worker 0: Request available
+[04/22/2026-10:35:35] [TRT-LLM] [I] Worker 0: Shutdown signal received
+[04/22/2026-10:35:35] [TRT-LLM] [I] Worker 1: Shutdown signal received
+[04/22/2026-10:35:35] [TRT-LLM] [I] DiffusionClient: Cleaning up IPC
+[04/22/2026-10:35:35] [TRT-LLM] [I] DiffusionClient: Background thread stopped
+[04/22/2026-10:35:35] [TRT-LLM] [I] DiffusionClient: Stopping workers
+[04/22/2026-10:35:37] [TRT-LLM] [W] DiffusionClient: Terminating worker 3291006 with SIGTERM
+[2026-04-22T10:35:38.388] error:  mpi/pmix_v5: _errhandler: prenyx0175 [0]: pmixp_client_v2.c:230: Error handler invoked: status = -61, source = [slurm.pmix.2116795.0:0]
+srun: Job step aborted: Waiting up to 122 seconds for job step to finish.
+[2026-04-22T10:35:38.393] error: *** STEP 2116795.0 ON prenyx0175 CANCELLED AT 2026-04-22T10:35:38 DUE to SIGNAL Killed ***
+srun: error: prenyx0175: task 0: Killed
+srun: Terminating StepId=2116795.0
