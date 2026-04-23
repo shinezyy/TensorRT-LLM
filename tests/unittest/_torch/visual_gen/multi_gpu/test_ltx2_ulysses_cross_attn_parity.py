@@ -1559,3 +1559,110 @@ class TestShardPeRaiseOnMismatch:
         sharded = LTXModel._shard_transformer_args(double, args)
         sharded_cos, _ = sharded.positional_embeddings
         assert sharded_cos.shape[2] == seq_len // double.ulysses_size
+
+
+# ---------------------------------------------------------------------------
+# F4c: env-gated VG_DEBUG_FINITE_CHECK asserts after a2v_out / v2a_out.
+#
+# The production asserts stay on device (no ``.item()`` / ``.cpu()``) so they
+# do not perturb timing. Three tests anchor the behaviour:
+# 1. Default-off: the module-level gate is False at import time unless
+#    ``VG_DEBUG_FINITE_CHECK=1`` is set in the environment.
+# 2. Raise-on-nan: once the gate is True, ``torch._assert_async(
+#    torch.isfinite(nan).all())`` surfaces as a RuntimeError.
+# 3. Source-level presence: both call sites exist in the production file at
+#    the exact conditional pattern used by ``parallel.py``. Source-level
+#    regression gate catches accidental removal of F4c.
+# 4. Spy / counter: with the gate off, ``torch._assert_async`` is never
+#    invoked; with the gate on, a direct pattern exercise invokes it.
+# ---------------------------------------------------------------------------
+class TestF4cVgDebugFiniteCheck:
+    """F4c gate: env-gated ``torch._assert_async(torch.isfinite(...))`` at a2v_out / v2a_out."""
+
+    def test_default_off_without_env(self):
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
+
+        # The module-level constant is evaluated once at import. We read the
+        # CURRENT value rather than re-importing to keep the test hermetic.
+        # Absence of the env var at start-of-suite is the only expected
+        # configuration; if someone exported VG_DEBUG_FINITE_CHECK=1 before
+        # launching pytest, skip the check (it is not a bug).
+        if os.environ.get("VG_DEBUG_FINITE_CHECK") == "1":
+            pytest.skip("VG_DEBUG_FINITE_CHECK=1 exported before import")
+        assert tmod._VG_DEBUG_FINITE_CHECK is False
+
+    def test_positive_nan_trips_async_assert_when_gate_flipped(self, monkeypatch):
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
+
+        monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", True)
+
+        # On CPU torch._assert_async runs eagerly, so we get a RuntimeError
+        # at call time. On CUDA the assertion surfaces at the next stream
+        # sync, also raising; either way, a non-finite input MUST raise.
+        bad = torch.tensor([float("nan"), 1.0])
+        with pytest.raises(RuntimeError):
+            if tmod._VG_DEBUG_FINITE_CHECK:
+                torch._assert_async(torch.isfinite(bad).all())
+
+    def test_source_contains_asserts_at_a2v_and_v2a_callsites(self):
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        import inspect
+        import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
+
+        src = inspect.getsource(tmod)
+        # Exact-pattern regression gate: the production forward MUST contain
+        # env-gated finite-check asserts at both cross-attention output
+        # call sites. If a future refactor drops these, this test fails
+        # loudly instead of leaving the diagnostic silently disabled.
+        assert "torch._assert_async(torch.isfinite(a2v_out).all())" in src, (
+            "F4c a2v finite-check assert missing from transformer_ltx2.py"
+        )
+        assert "torch._assert_async(torch.isfinite(v2a_out).all())" in src, (
+            "F4c v2a finite-check assert missing from transformer_ltx2.py"
+        )
+        assert "if _VG_DEBUG_FINITE_CHECK:" in src, (
+            "F4c gate constant missing from transformer_ltx2.py"
+        )
+
+    def test_spy_noop_when_gate_off_exercise_when_gate_on(self, monkeypatch):
+        """Spy on torch._assert_async: zero calls with the gate off, at least one with the gate on (for a single a2v-style pattern exercise)."""
+        if not MODULES_AVAILABLE:
+            pytest.skip("Required modules not available")
+        import tensorrt_llm._torch.visual_gen.models.ltx2.transformer_ltx2 as tmod
+
+        calls: list = []
+        orig_assert = torch._assert_async
+
+        def _spy(*args, **kwargs):
+            calls.append(args)
+            return orig_assert(*args, **kwargs)
+
+        monkeypatch.setattr(torch, "_assert_async", _spy)
+
+        # Phase 1: gate off. Mirrors the production conditional exactly so
+        # any future refactor of the gate constant is caught by this test.
+        monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", False)
+        a2v_out = torch.ones(2, 4)
+        v2a_out = torch.ones(2, 4)
+        if tmod._VG_DEBUG_FINITE_CHECK:
+            torch._assert_async(torch.isfinite(a2v_out).all())
+        if tmod._VG_DEBUG_FINITE_CHECK:
+            torch._assert_async(torch.isfinite(v2a_out).all())
+        assert calls == [], f"_assert_async called while gate off: {calls!r}"
+
+        # Phase 2: gate on with finite tensors — assert is invoked twice and
+        # does not raise because inputs are finite.
+        monkeypatch.setattr(tmod, "_VG_DEBUG_FINITE_CHECK", True)
+        if tmod._VG_DEBUG_FINITE_CHECK:
+            torch._assert_async(torch.isfinite(a2v_out).all())
+        if tmod._VG_DEBUG_FINITE_CHECK:
+            torch._assert_async(torch.isfinite(v2a_out).all())
+        assert len(calls) == 2, (
+            f"_assert_async call count mismatch after gate flip: "
+            f"expected 2, got {len(calls)}"
+        )

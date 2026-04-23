@@ -56,6 +56,23 @@ if TYPE_CHECKING:
     from tensorrt_llm._torch.visual_gen.config import DiffusionModelConfig
 
 
+# Env-gated diagnostic for AV cross-attention output finiteness. When
+# ``VG_DEBUG_FINITE_CHECK=1`` is set at import time, the ``a2v_out`` and
+# ``v2a_out`` assignments inside ``BasicAVTransformerBlock.forward`` insert
+# async ``torch._assert_async(torch.isfinite(...).all())`` checks so any
+# NaN / inf contamination that passes the Ulysses collectives, the inner
+# SDPA, and the output gate multiply surfaces at the next stream sync
+# instead of propagating silently into the residual add and downstream
+# VAE decode. Matches the ``parallel.py`` pattern: the check stays on
+# device (no ``.item()`` / ``.cpu()``) so it does not perturb timing
+# enough to mask stream races; the assertion surfaces at the next device
+# sync. Tests flip this constant via ``monkeypatch.setattr`` rather than
+# ``os.environ`` because the module evaluates the env variable exactly
+# once at import time, mirroring the upstream diagnostic in
+# ``attention_backend/parallel.py``.
+_VG_DEBUG_FINITE_CHECK = os.environ.get("VG_DEBUG_FINITE_CHECK", "0") == "1"
+
+
 # ---------------------------------------------------------------------------
 # LTX2Attention: TRT-LLM Linear + RMSNorm + attention backend + LTX-2 RoPE
 # ---------------------------------------------------------------------------
@@ -775,6 +792,8 @@ class BasicAVTransformerBlock(nn.Module):
                         a2v_out = a2v_out * perturbations.mask_like(
                             PerturbationType.SKIP_A2V_CROSS_ATTN, self.idx, a2v_out
                         )
+                    if _VG_DEBUG_FINITE_CHECK:
+                        torch._assert_async(torch.isfinite(a2v_out).all())
                     vx = vx + a2v_out
 
             if run_v2a and not skip_v2a:
@@ -803,6 +822,8 @@ class BasicAVTransformerBlock(nn.Module):
                         v2a_out = v2a_out * perturbations.mask_like(
                             PerturbationType.SKIP_V2A_CROSS_ATTN, self.idx, v2a_out
                         )
+                    if _VG_DEBUG_FINITE_CHECK:
+                        torch._assert_async(torch.isfinite(v2a_out).all())
                     ax = ax + v2a_out
 
         # --- Video FFN ---
