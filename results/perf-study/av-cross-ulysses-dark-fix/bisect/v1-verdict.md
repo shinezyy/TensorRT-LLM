@@ -2,13 +2,13 @@
 
 ## Verdict: **PASS** — H1 confirmed.
 
-V1 one-line bisection patch (`overlap_ok = False`) at the frozen pre-fix base SHA produces non-dark 1x2 video. H1 (overlap path in `UlyssesCrossAttention.forward` is the root cause of pure-black 1x2 output) is confirmed. Plan advances to Milestone 2 push (task5a / task5b).
+V1 one-line bisection patch (`overlap_ok = False`) at the frozen pre-fix base SHA produces non-dark 1x2 video. Unpatched frozen base produces pure-black. H1 (overlap path in `UlyssesCrossAttention.forward` is the root cause of pure-black 1x2 output) is confirmed. AC-1 closed.
 
 ## Frozen Pre-fix Base SHA
 
 `bb414983cc6fc16090f17482c4305f4e0006ac8c` — captured in `base.sha` (Round 0, task1).
 
-## Patch Applied (V1 one-liner)
+## Patch Applied (V1 one-liner, task2 positive leg)
 
 ```python
 # tensorrt_llm/_torch/visual_gen/attention_backend/parallel.py — UlyssesCrossAttention.forward
@@ -19,49 +19,51 @@ overlap_ok = False  # V1-bisect-patch: was (q.is_cuda and torch.cuda.is_availabl
 
 No other code changes. The patch forces the `if overlap_ok:` guard to skip the Q/KV side-stream overlap block and fall through to the `else` serial fallback.
 
-## Cluster Execution
+## Cluster Execution Summary
 
 - **Cluster**: prenyx
 - **Account**: `coreai_comparch_inferencex` (FairShare 0.785, top of {inferencex, trtllm, infbench} for yaoyangz)
 - **Image**: `/lustre/fsw/coreai_comparch_infbench/yaoyangz/images/perf-study-patches-r12.sqfs` (14 GB, Apr 21 13:49; baked at Round 12 pre-fix state)
-- **Workspace**: `/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2` on branch `v1-bisect-task2` (pushed from this repo's `bb414983c` via `git bundle`; linked-worktree blocker noted in tracker worked around using `git fetch <bundle>`).
-- **JOBID**: 2116795 (direct `visual_gen_ltx2.py` invocation; earlier JOBIDs 2116724 / 2116735 went through `bench-visual-gen` but the wrapper's interrupted shutdown truncated the `PurePythonEncoder` AVI save; JOBID 2116756 attempted `.mp4` which `PurePythonEncoder` rejects without `ffmpeg`; JOBID 2116795 switched to `.avi` and completed cleanly).
-- **Config**: `ltx2-t2v-sfp4-vanilla-1x2-cache0-tcompile1-cg0` — LTX2 T2V, 720x1280, 121 frames, 40 steps, VANILLA attention, static-nvfp4 linear, torch_compile on, cuda_graph off, cfg=1, ulysses=2.
-- **Output**: `/lustre/fsw/coreai_comparch_infbench/yaoyangz/aigv-results/results/bench-visual-gen/v1bisect-patched-bb414983c-direct_2116795/output.avi` (53 MB).
-- **Fetched to**: `results/perf-study/av-cross-ulysses-dark-fix/bisect/media/v1-patched-bb414983c.avi`.
-- **Bench timing**: Denoising 40/40 steps in 27.86s (0.70s/step). Pipeline 29.43s. Generation completed 31.65s.
+- **Workspace rotation** (R3 + R4): `git bundle` → `scp` → `git fetch <bundle>` into the existing remote `/lustre/.../visualgen-ltx2` workspace (linked-worktree-safe, avoids `git worktree add` which fails on this repo). Branches created and deleted within the remote workspace for each job; state reverted at end of round.
 
-## Brightness Verification
+### Positive (V1-patched frozen base) — PASS — JOBID 2116795 (R3)
 
-Run: `python scripts/verify_video_not_dark.py results/perf-study/av-cross-ulysses-dark-fix/bisect/media/v1-patched-bb414983c.avi`
+Direct `visual_gen_ltx2.py` sbatch (per `BL-20260423-visualgen-bench-wrapper-interrupts-encoder`: bypass bench-visual-gen wrapper, `.avi` output):
+- Config: `ltx2-t2v-sfp4-vanilla-1x2-cache0-tcompile1-cg0` — LTX2 T2V, 720x1280, 121 frames, 40 steps, VANILLA attention, static-nvfp4 linear, torch_compile on, cuda_graph off, cfg=1, ulysses=2.
+- Output: `results/perf-study/av-cross-ulysses-dark-fix/bisect/media/v1-patched-bb414983c.avi` (53 MB).
+- Denoising 40/40 in 27.86s (0.70s/step). Pipeline 29.43s. Generation 31.65s.
+- Brightness verification: `python scripts/verify_video_not_dark.py ...avi` →
+  ```
+  PASS .../v1-patched-bb414983c.avi size=1280x704 mean=151.11 std=61.943 max=255.0 thresholds(dark_mean<=5.0, flat_std<=1.0)
+  exit: 0
+  ```
 
-### Positive (patched base) — PASS
+### Negative (UNPATCHED frozen base) — FAIL — JOBID 2119590 (R4, canonical)
 
-```
-PASS .../v1-patched-bb414983c.avi size=1280x704 mean=151.11 std=61.943 max=255.0 thresholds(dark_mean<=5.0, flat_std<=1.0)
-exit: 0
-```
+**This is the canonical AC-1 negative artifact**, replacing the Round-12 equivalence-proof reuse used in R3. Same direct `visual_gen_ltx2.py` sbatch pattern on the SAME frozen base `bb414983c` with NO `overlap_ok=False` patch applied (overlap branch active):
+- Config: identical to the positive run.
+- Output: `results/perf-study/av-cross-ulysses-dark-fix/bisect/media/task6-unpatched-bb414983c.avi` (1.78 MB — much smaller than the patched 53 MB because a uniformly-zero video compresses trivially).
+- Brightness verification: `python scripts/verify_video_not_dark.py ...avi` →
+  ```
+  FAIL .../task6-unpatched-bb414983c.avi size=1280x704 mean=0.00 std=0.000 max=0.0 thresholds(dark_mean<=5.0, flat_std<=1.0)
+    reason: mean luminance 0.00 <= dark_mean_max 5.0
+    reason: pixel std 0.000 <= flat_std_max 1.0
+  exit: 1
+  ```
 
-`mean=151.11` >> `dark_mean_max=5.0`. `std=61.943` >> `flat_std_max=1.0`. Verifier exits 0.
+This same run also serves as task6 T-SWEEP-PRE evidence toward AC-3 (see tracker).
 
-### Negative (unpatched base) — FAIL (reused Round 12 1x2 artifact)
+### Supplementary (Round 12 reuse) — deprecated by task6
 
-Reused `results/perf-study/av-cross-a2a/round12/avi/1x2.avi`. Equivalence justification: between commit `16c51e2d3` (where the round12 .avi was produced) and the frozen base `bb414983c`, the only change to `parallel.py` is the `_ac9_bytes_sidecar` module-level side-effect import at the bottom of the file (`git log 16c51e2d3..bb414983c -- tensorrt_llm/_torch/visual_gen/attention_backend/parallel.py` returns only `e6367acab`, a non-overlap-path change). The overlap branch logic is byte-identical between these SHAs, so the round12 1x2.avi is a valid negative artifact for the frozen base.
-
-```
-FAIL results/perf-study/av-cross-a2a/round12/avi/1x2.avi size=1280x704 mean=0.00 std=0.000 max=0.0 thresholds(dark_mean<=5.0, flat_std<=1.0)
-  reason: mean luminance 0.00 <= dark_mean_max 5.0
-  reason: pixel std 0.000 <= flat_std_max 1.0
-exit: 1
-```
+R3 originally cited `results/perf-study/av-cross-a2a/round12/avi/1x2.avi` as the negative artifact, justified by the byte-equivalence of `parallel.py` between `16c51e2d3` (where round12 was captured) and the frozen base `bb414983c` — `git log 16c51e2d3..bb414983c -- tensorrt_llm/_torch/visual_gen/attention_backend/parallel.py` returns only `e6367acab` (the `_ac9_bytes_sidecar` module-level import at file bottom, not on the overlap path). R4's JOBID 2119590 makes this reuse no longer required; the round12 artifact remains in the repository as supplementary evidence but is NOT the canonical AC-1 negative.
 
 ## Verdict Summary Table
 
-| State | SHA on parallel.py | mean | std | verifier exit |
-|-------|---------------------|------|-----|---------------|
-| **Pre-fix (negative)** | `bb414983c` (overlap branch active) | 0.00 | 0.000 | **1 (FAIL as required)** |
-| **V1 patched (positive)** | `bb414983c` + `overlap_ok = False` | **151.11** | **61.943** | **0 (PASS)** |
+| State | parallel.py overlap branch | JOBID | avi mean | avi std | verifier exit |
+|-------|----------------------------|-------|----------|---------|---------------|
+| **Pre-fix (UNPATCHED frozen base)** | active | 2119590 (R4) | **0.00** | **0.000** | **1 (FAIL as required)** |
+| **V1 patched (`overlap_ok = False`)** | bypassed (serial fallback) | 2116795 (R3) | **151.11** | **61.943** | **0 (PASS)** |
 
 ## Conclusion
 
-H1 confirmed. The Q/KV stream-overlap branch in `UlyssesCrossAttention.forward` is the proximate cause of the pure-black 1x2 multi-GPU output. Forcing serial execution restores correct video. Commit A (full revert of the overlap branch + `_kv_side_stream` field + gated `VG_DEBUG_FINITE_CHECK` asserts) is the sanctioned fix. AC-1 closed.
+H1 confirmed. The Q/KV stream-overlap branch in `UlyssesCrossAttention.forward` is the proximate cause of the pure-black 1x2 multi-GPU output. Forcing serial execution restores correct video. Commit A (full revert of the overlap branch + `_kv_side_stream` field + gated `VG_DEBUG_FINITE_CHECK` asserts) is the sanctioned fix. AC-1 closed with both positive and negative legs anchored on direct executions of `bb414983c`.

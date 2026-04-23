@@ -1,0 +1,264 @@
+=== task4 fail run ===
+HEAD: bb414983c [None][tool] scripts/verify_video_not_dark.py: AVI MJPEG brightness verifier for AV-cross Ulysses dark-output diagnosis
+parallel.py overlap_ok state:
+272:            overlap_ok = (
+277:            if overlap_ok and self._kv_side_stream is None:
+280:            if overlap_ok:
+test file presence:
+-rw-rw-r-- 1 root root 56682 Apr 23 10:57 tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py
+
+=== Running pytest ===
+Skipping import of cpp extensions due to incompatible torch version 2.11.0a0+eb65b36914.nv26.02 for torchao version 0.15.0             Please see https://github.com/pytorch/ao/issues/2919 for more info
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+Link state is 1
+============================= test session starts ==============================
+platform linux -- Python 3.12.3, pytest-9.0.3, pluggy-1.6.0 -- /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/bin/python
+hypothesis profile 'default' -> database=DirectoryBasedExampleDatabase(PosixPath('/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.hypothesis/examples'))
+rootdir: /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest
+configfile: pytest.ini
+plugins: forked-1.6.0, split-0.11.0, asyncio-1.3.0, csv-3.0.0, mock-3.15.1, threadleak-0.5.0, typeguard-4.4.4, env-1.6.0, unused-fixtures-0.3.1, cov-7.1.0, timeout-2.4.0, dash-3.1.1, xdist-3.8.0, shard-0.1.2, rerunfailures-16.1, flakefinder-1.1.0, hypothesis-6.130.8, anyio-4.12.1
+asyncio: mode=Mode.STRICT, debug=False, asyncio_default_fixture_loop_scope=module, asyncio_default_test_loop_scope=function
+collecting ... collected 1 item
+Running 1 items in this shard: _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale 🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+🚨 Config not found for parakeet. You can manually add it to HARDCODED_CONFIG_FOR_MODELS in utils/auto_docstring.py
+[TensorRT-LLM] TensorRT LLM version: 1.3.0rc12
+vx_uly: mean=0.222401 std=1.16844 abs_max=2.45312 any_nan=False any_inf=False first8=[-1.8671875, 1.328125, 1.53125, 2.09375, 1.6484375, -1.0703125, 0.4765625, -0.7265625]
+vx_ref: mean=0.222607 std=1.16827 abs_max=2.45312 any_nan=False any_inf=False first8=[-1.8515625, 1.3359375, 1.53125, 2.09375, 1.6484375, -1.0703125, 0.5, -0.71484375]
+ax_uly: mean=0.0397471 std=0.995137 abs_max=2.53125 any_nan=False any_inf=False first8=[0.63671875, 0.99609375, -2.359375, 1.765625, -0.953125, -0.431640625, 0.27734375, 0.671875]
+ax_ref: mean=0.0397925 std=0.994868 abs_max=2.53125 any_nan=False any_inf=False first8=[0.63671875, 0.984375, -2.34375, 1.7734375, -0.94140625, -0.4375, 0.267578125, 0.6796875]
+TEST RAISED ERROR: 
+
+-- Process 0 terminated with the following error:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py", line 87, in _wrap
+    fn(i, *args)
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 120, in _worker
+    test_fn(rank, world_size)
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 1419, in _logic_av_cross_attn_parity_realistic_scale
+    torch.testing.assert_close(vx_uly, vx_ref, rtol=1e-2, atol=1e-2)
+  File "/usr/local/lib/python3.12/dist-packages/torch/testing/_comparison.py", line 1600, in assert_close
+    raise error_metas[0].to_error(msg)
+AssertionError: Tensor-likes are not close!
+
+Mismatched elements: 2121 / 32768 (6.5%)
+Greatest absolute difference: 0.0390625 at index (0, 287, 8) (up to 0.01 allowed)
+Greatest relative difference: 51.25 at index (0, 999, 12) (up to 0.01 allowed)
+
+Skipping import of cpp extensions due to incompatible torch version 2.11.0a0+eb65b36914.nv26.02 for torchao version 0.15.0             Please see https://github.com/pytorch/ao/issues/2919 for more info
+Skipping import of cpp extensions due to incompatible torch version 2.11.0a0+eb65b36914.nv26.02 for torchao version 0.15.0             Please see https://github.com/pytorch/ao/issues/2919 for more info
+/usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+  _warnings.warn(
+/usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+  _warnings.warn(
+Traceback (most recent call last):
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/conftest.py", line 121, in pytest_pyfunc_call
+    return (yield)
+            ^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/pluggy/_callers.py", line 121, in _multicall
+    res = hook_impl.function(*args)
+          ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/python.py", line 166, in pytest_pyfunc_call
+    result = testfunction(**testargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 1430, in test_av_cross_attn_parity_realistic_scale
+    _run_distributed(
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 149, in _run_distributed
+    mp.spawn(
+  File "/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py", line 340, in spawn
+    return start_processes(fn, args, nprocs, join, daemon, start_method="spawn")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py", line 296, in start_processes
+    while not context.join():
+              ^^^^^^^^^^^^^^
+  File "/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py", line 211, in join
+    raise ProcessRaisedException(msg, error_index, failed_process.pid)
+torch.multiprocessing.spawn.ProcessRaisedException: 
+
+-- Process 0 terminated with the following error:
+Traceback (most recent call last):
+  File "/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py", line 87, in _wrap
+    fn(i, *args)
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 120, in _worker
+    test_fn(rank, world_size)
+  File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 1419, in _logic_av_cross_attn_parity_realistic_scale
+    torch.testing.assert_close(vx_uly, vx_ref, rtol=1e-2, atol=1e-2)
+  File "/usr/local/lib/python3.12/dist-packages/torch/testing/_comparison.py", line 1600, in assert_close
+    raise error_metas[0].to_error(msg)
+AssertionError: Tensor-likes are not close!
+
+Mismatched elements: 2121 / 32768 (6.5%)
+Greatest absolute difference: 0.0390625 at index (0, 287, 8) (up to 0.01 allowed)
+Greatest relative difference: 51.25 at index (0, 999, 12) (up to 0.01 allowed)
+
+FAILED
+
+=================================== FAILURES ===================================
+___ TestAVCrossAttnRealisticParity.test_av_cross_attn_parity_realistic_scale ___
+
+self = <multi_gpu.test_ltx2_ulysses_cross_attn_parity.TestAVCrossAttnRealisticParity object at 0x7ff8631b11c0>
+
+    def test_av_cross_attn_parity_realistic_scale(self):
+>       _run_distributed(
+            world_size=2,
+            test_fn=_logic_av_cross_attn_parity_realistic_scale,
+        )
+
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py:1430: 
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py:149: in _run_distributed
+    mp.spawn(
+/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py:340: in spawn
+    return start_processes(fn, args, nprocs, join, daemon, start_method="spawn")
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py:296: in start_processes
+    while not context.join():
+              ^^^^^^^^^^^^^^
+_ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ 
+
+self = <torch.multiprocessing.spawn.ProcessContext object at 0x7ff8631b1490>
+timeout = None, grace_period = None
+
+    def join(self, timeout: float | None = None, grace_period: float | None = None):
+        r"""Join one or more processes within spawn context.
+    
+        Attempt to join one or more processes in this spawn context.
+        If one of them exited with a non-zero exit status, this function
+        kills the remaining processes (optionally with a grace period)
+        and raises an exception with the cause of the first process exiting.
+    
+        Returns ``True`` if all processes have been joined successfully,
+        ``False`` if there are more processes that need to be joined.
+    
+        Args:
+            timeout (float): Wait this long (in seconds) before giving up on waiting.
+            grace_period (float): When any processes fail, wait this long (in seconds)
+                for others to shutdown gracefully before terminating them. If they
+                still don't exit, wait another grace period before killing them.
+        """
+        # Ensure this function can be called even when we're done.
+        if len(self.sentinels) == 0:
+            return True
+    
+        # Wait for any process to fail or all of them to succeed.
+        ready = multiprocessing.connection.wait(
+            self.sentinels.keys(),
+            timeout=timeout,
+        )
+    
+        error_index = None
+        for sentinel in ready:
+            index = self.sentinels.pop(sentinel)
+            process = self.processes[index]
+            process.join()
+            if process.exitcode != 0:
+                error_index = index
+                break
+    
+        # Return if there was no error.
+        if error_index is None:
+            # Return whether or not all processes have been joined.
+            return len(self.sentinels) == 0
+        # An error occurred. Clean-up all processes before returning.
+        # First, allow a grace period for processes to shutdown themselves.
+        if grace_period is not None:
+            self._join_procs_with_timeout(grace_period)
+        # Then, terminate processes that are still alive. Try SIGTERM first.
+        for process in self.processes:
+            if process.is_alive():
+                log.warning("Terminating process %s via signal SIGTERM", process.pid)
+                process.terminate()
+    
+        # Try SIGKILL if the process isn't going down after another grace_period.
+        # The reason is related to python signal handling is limited
+        # to main thread and if that is in c/c++ land and stuck it won't
+        # to handle it. We have seen processes getting stuck not handling
+        # SIGTERM for the above reason.
+        self._join_procs_with_timeout(30 if grace_period is None else grace_period)
+        for process in self.processes:
+            if process.is_alive():
+                log.warning(
+                    "Unable to shutdown process %s via SIGTERM , forcefully exiting via SIGKILL",
+                    process.pid,
+                )
+                process.kill()
+            process.join()
+    
+        # The file will only be created if the process crashed.
+        failed_process = self.processes[error_index]
+        if not os.access(self.error_files[error_index], os.R_OK):
+            exitcode = self.processes[error_index].exitcode
+            if exitcode < 0:
+                try:
+                    name = signal.Signals(-exitcode).name
+                except ValueError:
+                    name = f"<Unknown signal {-exitcode}>"
+                raise ProcessExitedException(
+                    f"process {error_index:d} terminated with signal {name}",
+                    error_index=error_index,
+                    error_pid=failed_process.pid,
+                    exit_code=exitcode,
+                    signal_name=name,
+                )
+            else:
+                raise ProcessExitedException(
+                    f"process {error_index:d} terminated with exit code {exitcode:d}",
+                    error_index=error_index,
+                    error_pid=failed_process.pid,
+                    exit_code=exitcode,
+                )
+    
+        with open(self.error_files[error_index], "rb") as fh:
+            original_trace = pickle.load(fh)
+        msg = f"\n\n-- Process {error_index:d} terminated with the following error:\n"
+        msg += original_trace
+>       raise ProcessRaisedException(msg, error_index, failed_process.pid)
+E       torch.multiprocessing.spawn.ProcessRaisedException: 
+E       
+E       -- Process 0 terminated with the following error:
+E       Traceback (most recent call last):
+E         File "/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py", line 87, in _wrap
+E           fn(i, *args)
+E         File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 120, in _worker
+E           test_fn(rank, world_size)
+E         File "/lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py", line 1419, in _logic_av_cross_attn_parity_realistic_scale
+E           torch.testing.assert_close(vx_uly, vx_ref, rtol=1e-2, atol=1e-2)
+E         File "/usr/local/lib/python3.12/dist-packages/torch/testing/_comparison.py", line 1600, in assert_close
+E           raise error_metas[0].to_error(msg)
+E       AssertionError: Tensor-likes are not close!
+E       
+E       Mismatched elements: 2121 / 32768 (6.5%)
+E       Greatest absolute difference: 0.0390625 at index (0, 287, 8) (up to 0.01 allowed)
+E       Greatest relative difference: 51.25 at index (0, 999, 12) (up to 0.01 allowed)
+
+/usr/local/lib/python3.12/dist-packages/torch/multiprocessing/spawn.py:211: ProcessRaisedException
+=============================== warnings summary ===============================
+../../../../../usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36
+  /usr/local/lib/python3.12/dist-packages/modelopt/torch/__init__.py:36: UserWarning: transformers version 4.57.3 is incompatible with nvidia-modelopt and may cause issues. Please install recommended version with `pip install nvidia-modelopt[hf]` if working with HF models.
+    _warnings.warn(
+
+.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434
+  /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2/.venv-3.12/lib/python3.12/site-packages/_pytest/config/__init__.py:1434: PytestConfigWarning: Unknown config option: xdist_start_method
+  
+    self._warn_or_fail_if_strict(f"Unknown config option: {key}\n")
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+============================== slowest durations ===============================
+69.29s call     _torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+
+(2 durations < 0.005s hidden.  Use -vv to show these durations.)
+=========================== short test summary info ============================
+FAILED tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py::TestAVCrossAttnRealisticParity::test_av_cross_attn_parity_realistic_scale
+=================== 1 failed, 2 warnings in 70.01s (0:01:10) ===================
+
+=== pytest exit code: 1 ===
+task4 FAIL: correctly caught regression (non-zero exit)
