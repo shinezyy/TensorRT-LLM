@@ -1,0 +1,81 @@
+# task-pytest-pre patchset manifest
+
+Produced: 2026-04-23 (RLCR loop 2026-04-23_16-52-21, Round 0)
+Scope: local-only; patches staged at /tmp/pytest-pre-patchset/; cluster replay deferred to Round 1+.
+
+## Production command (authoritative per plan §"task-pytest-pre Patchset Recipe")
+
+    git format-patch bb414983cc6fc16090f17482c4305f4e0006ac8c..c183fc79b59171f52ff3ff0706a5cecab1a50c9b \
+        -- tests/unittest/_torch/visual_gen/multi_gpu/test_ltx2_ulysses_cross_attn_parity.py
+
+Target output directory (spec):  /tmp/pytest-pre-patchset/
+
+Note on production detail: git 2.50.1 (Apple Git-155) on this worktree rejects
+`-o <abs path outside worktree>` with `fatal: ... is outside repository at ...`.
+Workaround used in this round: generate into the worktree root, then `mv` the
+seven `.patch` files into `/tmp/pytest-pre-patchset/`. The resulting files and
+their SHA-256 hashes (below) are byte-for-byte the authoritative patchset that
+the plan's recipe would have produced; only the write-then-move intermediate
+path differs.
+
+## Count check
+
+Expected count: 7
+Observed count: 7   ✓ (plan's BLOCKED gate does NOT trip)
+
+## Ordered mapping: patch filename → source commit SHA
+
+| Patch filename | Source commit SHA | Subject |
+|---|---|---|
+| 0001-None-test-AV-cross-attn-realistic-scale-U-1-vs-U-2-p.patch | 30c667f3482bdf880a49bc74135ef283895cc5af | [None][test] AV cross-attn realistic-scale U=1 vs U=2 parity (regression gate) |
+| 0002-None-test-AV-cross-attn-realistic-scale-parity-unifo.patch | 1cf27b7dc076f746897c3792135e617f3fe91828 | [None][test] AV cross-attn realistic-scale parity: uniform failure diagnostics |
+| 0003-None-test-AV-cross-attn-realistic-scale-scale-num_la.patch | 26c75fefcda0f4aff01c93a6c321a3889db5ce35 | [None][test] AV cross-attn realistic-scale: scale num_layers 4->8 (R4 discriminator) |
+| 0004-None-test-AV-cross-attn-realistic-scale-escalate-ite.patch | 62f580a3052589ad525ad52b94ad260abcf70bcf | [None][test] AV cross-attn realistic-scale: escalate iterations 20->60, pressure 100MB->500MB (R4 discriminator v3) |
+| 0005-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch | d8d2a3c69f6a97cc4afac402523302c146058013 | [None][test] AV cross-attn realistic-scale: scale shape 8x16x16 -> 14x32x32 (R5 discriminator v4) |
+| 0006-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch | e2921ff34f03fd2d403bd102bc4d1c950b9b35b3 | [None][test] AV cross-attn realistic-scale: scale shape 14x32x32 -> 14x45x80 (R5 discriminator v5) |
+| 0007-None-test-AV-cross-attn-realistic-scale-drop-assert_.patch | c183fc79b59171f52ff3ff0706a5cecab1a50c9b | [None][test] AV cross-attn realistic-scale: drop assert_close (Option P) |
+
+## Cross-check against plan's listed 7 source SHAs
+
+Plan lists (§"task-pytest-pre Patchset Recipe", step 2):
+  30c667f34, 1cf27b7dc, 26c75fefc, 62f580a30, d8d2a3c69, e2921ff34, c183fc79b
+
+Observed (7-hex prefixes from source column above):
+  30c667f3, 1cf27b7d, 26c75fef, 62f580a3, d8d2a3c6, e2921ff3, c183fc79
+
+Match: ✓ (1:1 prefix agreement across all 7; no extra, no missing)
+
+## SHA-256 per patch file (for provenance.txt reference in Round 1+)
+
+7b4a07d45857b6776b591fb1690d5dc2f8784fd8fd4fa3bd2e0f4093ae4a653a  0001-None-test-AV-cross-attn-realistic-scale-U-1-vs-U-2-p.patch
+c4c8a6bc0a9ff77ffaf9a03073784d36f39c32abc7c5f3a62ba050fcc864d04b  0002-None-test-AV-cross-attn-realistic-scale-parity-unifo.patch
+bd4c065b79982126e345fe551a8bdef759ad8da0249017ba9530477b86fc0d0a  0003-None-test-AV-cross-attn-realistic-scale-scale-num_la.patch
+c0b8e9f40f69f5e17e898aefc1ce5642ca666e779a13e804d7e6cb7190b69126  0004-None-test-AV-cross-attn-realistic-scale-escalate-ite.patch
+356a8fa89ac654e40214b11623aa5e852c14c5ad554e016133db6343386da563  0005-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch
+b773905492dc84162925908806ca140e0554e6c094af53be47b83ac82203bf31  0006-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch
+724a522566c1110f8a463ea19ad915bc086524131f0f0dbadee74b136ce1b3fc  0007-None-test-AV-cross-attn-realistic-scale-drop-assert_.patch
+
+## Cluster replay preview (Round 1+)
+
+    scp /tmp/pytest-pre-patchset/*.patch prenyx:/tmp/pytest-pre-patchset/
+    ssh prenyx "git -C /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2 \
+        worktree add /lustre/fsw/coreai_comparch_infbench/yaoyangz/visualgen-ltx2-task-pytest-pre-<local-ts> \
+        bb414983cc6fc16090f17482c4305f4e0006ac8c"
+    ssh prenyx "git -C <worktree> am /tmp/pytest-pre-patchset/*.patch"
+    # salloc 2xB200 inside r12 image, PYTHONPATH=<worktree>, run realistic-scale pytest,
+    # archive log + imports.txt + provenance.txt (8 fields, this manifest feeds fields 3 and 4).
+
+## Plan fields this manifest feeds (AC-10 provenance schema)
+
+- Field 3 (`applied_patchset_source_shas`):
+    [30c667f34, 1cf27b7dc, 26c75fefc, 62f580a30, d8d2a3c69, e2921ff34, c183fc79b]
+- Field 4 (`applied_patchset_filenames`):
+    [0001-None-test-AV-cross-attn-realistic-scale-U-1-vs-U-2-p.patch,
+     0002-None-test-AV-cross-attn-realistic-scale-parity-unifo.patch,
+     0003-None-test-AV-cross-attn-realistic-scale-scale-num_la.patch,
+     0004-None-test-AV-cross-attn-realistic-scale-escalate-ite.patch,
+     0005-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch,
+     0006-None-test-AV-cross-attn-realistic-scale-scale-shape-.patch,
+     0007-None-test-AV-cross-attn-realistic-scale-drop-assert_.patch]
+
+Fields 1, 2, 5-8 populated at cluster execution time in Round 1+.

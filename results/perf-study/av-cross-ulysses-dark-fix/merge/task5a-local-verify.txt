@@ -1,0 +1,56 @@
+# task5a — local verification of Commit A on perf-study-patches
+
+Executed: 2026-04-23 (RLCR loop 2026-04-23_16-52-21, Round 0)
+Scope: local-only; no cluster; no GitHub push.
+
+## Current HEAD
+
+Branch: perf-study-patches
+HEAD SHA: c183fc79b59171f52ff3ff0706a5cecab1a50c9b
+
+## Commit A ancestry on HEAD
+
+Commit A part 1: 79cb6d861 (`[None][fix] UlyssesCrossAttention: revert Q/KV stream overlap (restore serial path)`)
+Commit A part 2: 4dec6ab2e (`[None][test] UlyssesCrossAttention: VG_DEBUG_FINITE_CHECK diagnostic`)
+
+Command 1: `git merge-base --is-ancestor 79cb6d861 HEAD` → exit 0 (79cb6d861 IS ancestor of HEAD)
+Command 2: `git merge-base --is-ancestor 4dec6ab2e HEAD` → exit 0 (4dec6ab2e IS ancestor of HEAD)
+Command 3: `git merge-base --is-ancestor 79cb6d861 4dec6ab2e` → exit 0 (part 1 precedes part 2; strict order preserved)
+
+## Parallel.py overlap-path grep
+
+Command: `grep -n "_kv_side_stream\|overlap_ok" tensorrt_llm/_torch/visual_gen/attention_backend/parallel.py`
+Output: (empty)
+Exit code: 1 (grep exit 1 == "no match", i.e. the overlap path has been fully reverted on this HEAD)
+
+## Full commit chain bb414983c..HEAD
+
+c183fc79b [None][test] AV cross-attn realistic-scale: drop assert_close (Option P)
+cc4e61812 [None][test] AV cross-ulysses R5 shape-ladder exhaustion: tier 1 + tier 2 pytest logs
+e2921ff34 [None][test] AV cross-attn realistic-scale: scale shape 14x32x32 -> 14x45x80 (R5 discriminator v5)
+d8d2a3c69 [None][test] AV cross-attn realistic-scale: scale shape 8x16x16 -> 14x32x32 (R5 discriminator v4)
+34e4774c1 [None][test] AV cross-ulysses R4 task6 canonical AC-1 negative + task4 num_layers=8 escalation logs
+62f580a30 [None][test] AV cross-attn realistic-scale: escalate iterations 20->60, pressure 100MB->500MB (R4 discriminator v3)
+26c75fefc [None][test] AV cross-attn realistic-scale: scale num_layers 4->8 (R4 discriminator)
+612a6bede [None][test] AV cross-ulysses R3 bisect evidence + AC-2 pytest logs
+1cf27b7dc [None][test] AV cross-attn realistic-scale parity: uniform failure diagnostics
+30c667f34 [None][test] AV cross-attn realistic-scale U=1 vs U=2 parity (regression gate)
+4dec6ab2e [None][test] UlyssesCrossAttention: VG_DEBUG_FINITE_CHECK diagnostic
+79cb6d861 [None][fix] UlyssesCrossAttention: revert Q/KV stream overlap (restore serial path)
+9f8f60e3d [None][chore] Freeze pre-fix base SHA for AV-cross-ulysses-dark-fix bisect
+
+## Verdict
+
+PASS. Commit A (both parts) is present on the `perf-study-patches` HEAD chain in strict
+part-1 → part-2 order. The overlap-path code pattern (`_kv_side_stream` / `overlap_ok`)
+is fully removed from `tensorrt_llm/_torch/visual_gen/attention_backend/parallel.py`.
+
+No cluster rerun of `TestAC*` classes performed in Round 0 — the plan explicitly permits
+reusing the latest timestamped run in the current parent loop (R5 v5 tier 1/2 pytest
+logs at `results/perf-study/av-cross-ulysses-dark-fix/pytest/`). Any fresh cluster
+rerun will be captured in Round 1+ on its own JOBID if reviewer requires.
+
+## No GitHub push
+
+By design (DEC-D, 2026-04-23): no push to any GitHub remote. This verification is
+purely local, on the worktree at `/Users/yaoyangz/projects/visualgen-ltx2`.
