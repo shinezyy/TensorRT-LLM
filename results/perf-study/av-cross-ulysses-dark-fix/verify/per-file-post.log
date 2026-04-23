@@ -1,19 +1,45 @@
 # task-verify-post per-file `verify_video_not_dark.py` log
 
-Executed: 2026-04-23 (RLCR loop 2026-04-23_16-52-21, Round 1)
-Runner: prenyx compute node via `srun --container-image=perf-study-patches-r12.sqfs`
-Script: `scripts/verify_video_not_dark.py` at defaults (`--dark-mean-max 5.0 --flat-std-max 1.0`)
+Executed: 2026-04-23 (RLCR loop 2026-04-23_16-52-21, Round 2; archive-of-record refresh in Round 3)
+Runner: local host after fetch from prenyx; original run on prenyx compute
+node `prenyx0079` via combined sbatch JOBID `2121874` with the
+`av-post-a-combined-2121874` pyxis container (post-Commit-A overlay on
+`perf-study-patches-r12.sqfs` base — see
+`results/perf-study/av-cross-ulysses-dark-fix/cluster/images.md` for the
+full overlay rationale).
+Script: `scripts/verify_video_not_dark.py` at defaults
+(`--dark-mean-max 5.0 --flat-std-max 1.0`).
 
-## Post-fix bench output (task8 JOBID 2121181)
+## Post-fix bench output (task8 STEP 3 of combined JOBID 2121874)
 
 ```
-PASS /lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/bench-results/t-sweep-post-2121181/output.avi size=1280x704 mean=51.68 std=56.951 max=214.0 thresholds(dark_mean<=5.0, flat_std<=1.0)
+$ python3 scripts/verify_video_not_dark.py results/bench-visual-gen/t-sweep-post-2121874/output.avi
+PASS results/bench-visual-gen/t-sweep-post-2121874/output.avi size=1280x704 mean=51.68 std=56.951 max=214.0 thresholds(dark_mean<=5.0, flat_std<=1.0)
 exit: 0
 ```
 
-Fetched to `results/bench-visual-gen/t-sweep-post-2121181/output.avi` (5.2 MB).
+Archived artifact: `results/bench-visual-gen/t-sweep-post-2121874/output.avi`
+(5.2 MB, Motion JPEG AVI, 1280x704, 121 frames, 40 denoising steps,
+seed=42, prompt="A close-up of a hand turning a dark metal wheel with
+intricate gears, slowly and deliberately.") produced at cfg_size=1,
+ulysses_size=2, VANILLA attention backend with
+`PYTHONPATH=/lustre/fsw/coreai_comparch_infbench/yaoyangz/av-cross-scratch/wt-post-a-b-v6`
+(= base branch HEAD `c183fc79b` = post-A + post-B v6, without F4a/F4c).
 
 ## AC-9 closure
 
 Every post-fix `.avi` produced by `task8` PASSes `verify_video_not_dark.py`
-at defaults. Count: 1 file, 1 PASS, 0 FAIL. AC-9 positive leg SATISFIED.
+at defaults. Count: 1 file, 1 PASS, 0 FAIL. AC-9 positive leg SATISFIED
+against the Round 2 archive-of-record (JOBID `2121874`,
+combined-overlay image `perf-study-patches-4dec6ab2e`). The Round 1
+archive entry (JOBID `2121181`, r12 image, rejected in 1-review) has
+been superseded by this refreshed log.
+
+Cross-reference:
+- `results/perf-study/av-cross-ulysses-dark-fix/verify/post-verdict.txt`
+  carries the same PASS verdict (standalone verifier invocation output).
+- `results/perf-study/av-cross-ulysses-dark-fix/verify/verdict-table.md`
+  POST row cites JOBID `2121874` with identical mean / std / max numbers.
+- `results/bench-visual-gen/t-sweep-post-2121874/provenance.txt` provides
+  the 8-field AC-10 provenance for the bench run that produced this
+  `.avi`.
